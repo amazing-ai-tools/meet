@@ -59,11 +59,15 @@ GitHub Actions:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_PROJECT_NAME`
+- `BACKEND_ORIGIN` Cloudflare Pages environment variable, pointing to the public VPS backend origin
 - `RUNNER_LABEL=vps-meet`
 - `BACKEND_PORT=8787`
 - `CLOUDFLARE_API_TOKEN` secret
+- `SESSION_SECRET` secret
+- `LIVEKIT_API_KEY` secret
+- `LIVEKIT_API_SECRET` secret
 
-The backend deploy also requires `/opt/meetteams/.env` on the VPS with the backend variables above.
+The backend deploy writes `/opt/meetteams/.env` on the VPS from GitHub vars and secrets.
 
 ## LiveKit self-hosting
 

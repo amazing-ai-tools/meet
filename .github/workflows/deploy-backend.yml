@@ -34,6 +34,16 @@ jobs:
         run: |
           set -euo pipefail
           sudo mkdir -p /opt/meetteams/current /var/lib/meetteams
+          sudo tee /opt/meetteams/.env >/dev/null <<'ENV'
+          PORT=${{ vars.BACKEND_PORT || '8787' }}
+          PUBLIC_ORIGIN=${{ vars.PUBLIC_ORIGIN || 'https://meet.app.amazing-ai.tools' }}
+          MEETTEAMS_DATA_PATH=/var/lib/meetteams/meetteams.json
+          SESSION_SECRET=${{ secrets.SESSION_SECRET || 'dev-session-secret' }}
+          GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
+          LIVEKIT_URL=${{ vars.LIVEKIT_URL || 'ws://127.0.0.1:7880' }}
+          LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY || 'devkey' }}
+          LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET || 'devsecret' }}
+          ENV
           sudo rsync -a --delete \
             --exclude node_modules \
             --exclude dist \
