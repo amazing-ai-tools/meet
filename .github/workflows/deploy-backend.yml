@@ -1,0 +1,53 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - server/**
+      - deploy/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/deploy-backend.yml
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ${{ vars.RUNNER_LABEL || 'vps-meet' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --include=dev
+
+      - name: Test backend
+        run: npm test
+
+      - name: Build backend
+        run: npm run build:server
+
+      - name: Install backend on VPS
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /opt/meetteams/current /var/lib/meetteams
+          sudo rsync -a --delete \
+            --exclude node_modules \
+            --exclude dist \
+            --exclude .git \
+            ./ /opt/meetteams/current/
+          cd /opt/meetteams/current
+          sudo npm ci --omit=dev
+          sudo npm run build:server
+          sudo cp deploy/systemd/meetteams-backend.service /etc/systemd/system/meetteams-backend.service
+          sudo systemctl daemon-reload
+          sudo systemctl enable meetteams-backend.service
+          sudo systemctl restart meetteams-backend.service
+
+      - name: Backend health check
+        run: |
+          sleep 2
+          curl -fsS http://127.0.0.1:${{ vars.BACKEND_PORT || '8787' }}/api/health

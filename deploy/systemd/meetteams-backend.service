@@ -1,0 +1,16 @@
+[Unit]
+Description=MeetTeams backend API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/meetteams/current
+EnvironmentFile=/opt/meetteams/.env
+ExecStart=/usr/bin/npm run start:server
+Restart=always
+RestartSec=5
+User=ubuntu
+Group=ubuntu
+
+[Install]
+WantedBy=multi-user.target
