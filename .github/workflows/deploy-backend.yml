@@ -53,7 +53,10 @@ jobs:
           sudo npm ci --include=dev
           sudo npm run build:server
           sudo cp deploy/systemd/meetteams-backend.service /etc/systemd/system/meetteams-backend.service
-          sudo chown -R ubuntu:ubuntu /opt/meetteams /var/lib/meetteams
+          SERVICE_USER="$(id -un)"
+          SERVICE_GROUP="$(id -gn)"
+          sudo sed -i "s/^User=.*/User=${SERVICE_USER}/; s/^Group=.*/Group=${SERVICE_GROUP}/" /etc/systemd/system/meetteams-backend.service
+          sudo chown -R "${SERVICE_USER}:${SERVICE_GROUP}" /opt/meetteams /var/lib/meetteams
           sudo systemctl daemon-reload
           sudo systemctl enable meetteams-backend.service
           sudo systemctl restart meetteams-backend.service
