@@ -8,6 +8,7 @@ import {
   Mic,
   MonitorUp,
   Plus,
+  QrCode,
   Shield,
   Sparkles,
   UserPlus,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { QRCodeSVG } from 'qrcode.react';
 
 import {
   clearSession,
@@ -32,6 +34,7 @@ import {
   loadSession,
 } from './api';
 import type { JoinResponse, MeetingRoom, Session, Team } from './types';
+import { createMeetingUrl } from './meetingLinks';
 import './styles.css';
 
 declare global {
@@ -471,6 +474,7 @@ function MeetingRoute({
   const [join, setJoin] = React.useState<JoinResponse | undefined>();
   const [error, setError] = React.useState('');
   const [busy, setBusy] = React.useState(false);
+  const meetingUrl = createMeetingUrl(slug, appDomain);
 
   React.useEffect(() => {
     setJoin(undefined);
@@ -501,7 +505,7 @@ function MeetingRoute({
   };
 
   if (join) {
-    return <MeetingRoomView join={join} onNavigate={onNavigate} />;
+    return <MeetingRoomView join={join} meetingUrl={meetingUrl} onNavigate={onNavigate} />;
   }
 
   return (
@@ -511,10 +515,7 @@ function MeetingRoute({
           <h1>{room?.title || 'Carregando reuniao'}</h1>
           <p>{room?.requiresLogin ? 'Esta sala persistente exige Google.' : 'Reuniao avulsa aberta por link.'}</p>
         </div>
-        <button className="secondary-action" onClick={() => navigator.clipboard.writeText(`https://${appDomain}/r/${slug}`)}>
-          <Copy size={16} />
-          Copiar link
-        </button>
+        <CopyLinkButton url={meetingUrl} />
       </header>
 
       {error && <div className="error-banner">{error}</div>}
@@ -539,13 +540,22 @@ function MeetingRoute({
             <Video size={18} />
             Entrar agora
           </button>
+          <MeetingShareCard url={meetingUrl} label="Compartilhar sala" />
         </div>
       </div>
     </section>
   );
 }
 
-function MeetingRoomView({ join, onNavigate }: { join: JoinResponse; onNavigate: (path: string) => void }) {
+function MeetingRoomView({
+  join,
+  meetingUrl,
+  onNavigate,
+}: {
+  join: JoinResponse;
+  meetingUrl: string;
+  onNavigate: (path: string) => void;
+}) {
   const isHost = join.participant.role === 'host';
   const [connectionStatus, setConnectionStatus] = React.useState('Conectando ao LiveKit...');
   const [roomError, setRoomError] = React.useState<string | undefined>();
@@ -566,10 +576,13 @@ function MeetingRoomView({ join, onNavigate }: { join: JoinResponse; onNavigate:
           <h1>{join.room.title}</h1>
           <p>/{join.room.slug} · {join.identity.displayName} · {connectionStatus}</p>
         </div>
-        <button className="leave-button" onClick={() => onNavigate('/')}>
-          <LogOut size={17} />
-          Sair
-        </button>
+        <div className="meeting-actions">
+          <CopyLinkButton url={meetingUrl} />
+          <button className="leave-button" onClick={() => onNavigate('/')}>
+            <LogOut size={17} />
+            Sair
+          </button>
+        </div>
       </header>
 
       {roomError ? (
@@ -597,6 +610,7 @@ function MeetingRoomView({ join, onNavigate }: { join: JoinResponse; onNavigate:
       </LiveKitRoom>
 
       <aside className="host-panel">
+        <MeetingShareCard url={meetingUrl} label="Link da reuniao" compact />
         <h2>Controles de host</h2>
         <p>{isHost ? 'Voce pode moderar participantes desta sala.' : 'Somente o host pode moderar.'}</p>
         <button disabled={!isHost}>
@@ -609,6 +623,37 @@ function MeetingRoomView({ join, onNavigate }: { join: JoinResponse; onNavigate:
         </button>
       </aside>
     </section>
+  );
+}
+
+function CopyLinkButton({ url }: { url: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <button className="secondary-action" onClick={copy}>
+      <Copy size={16} />
+      {copied ? 'Link copiado' : 'Copiar link'}
+    </button>
+  );
+}
+
+function MeetingShareCard({ url, label, compact = false }: { url: string; label: string; compact?: boolean }) {
+  return (
+    <div className={compact ? 'share-card compact' : 'share-card'}>
+      <div className="share-card-head">
+        <QrCode size={18} />
+        <strong>{label}</strong>
+      </div>
+      <QRCodeSVG value={url} size={compact ? 112 : 148} marginSize={2} level="M" />
+      <code>{url}</code>
+      <CopyLinkButton url={url} />
+    </div>
   );
 }
 

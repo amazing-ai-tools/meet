@@ -478,6 +478,55 @@ input:focus {
   justify-content: center;
 }
 
+.share-card {
+  border: 1px solid #dbe5f4;
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  background: #f8fbff;
+}
+
+.share-card-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #17468d;
+}
+
+.share-card svg:not(.lucide) {
+  width: 148px;
+  height: 148px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.share-card code {
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  color: #334056;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.share-card .secondary-action {
+  width: 100%;
+}
+
+.share-card.compact {
+  padding: 12px;
+}
+
+.share-card.compact svg:not(.lucide) {
+  width: 112px;
+  height: 112px;
+}
+
 .meeting-stage {
   min-width: 0;
   height: 100vh;
@@ -501,6 +550,12 @@ input:focus {
 
 .meeting-header p {
   color: rgba(255, 255, 255, 0.68);
+}
+
+.meeting-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .livekit-shell {
@@ -570,9 +625,15 @@ input:focus {
   }
 
   .topbar,
-  .section-head {
+  .section-head,
+  .meeting-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .meeting-actions {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .command-form,

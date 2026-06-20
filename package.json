@@ -9,7 +9,7 @@
     "build": "tsc && vite build",
     "build:server": "tsc -p server/tsconfig.json",
     "start:server": "node server/dist/index.js",
-    "test": "npm run build:server && node --test server/test/*.test.mjs",
+    "test": "npm run build:server && node --test server/test/*.test.mjs && npx tsx --test src/*.test.ts",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
     "livekit-client": "^2.9.9",
     "livekit-server-sdk": "^2.13.3",
     "lucide-react": "^0.303.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
