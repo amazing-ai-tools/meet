@@ -18,12 +18,13 @@ import {
 } from 'lucide-react';
 import {
   Chat,
-  ControlBar,
+  DisconnectButton,
   GridLayout,
   LayoutContextProvider,
   LiveKitRoom,
   ParticipantTile,
   RoomAudioRenderer,
+  TrackToggle,
   useCreateLayoutContext,
   useParticipants,
   useTracks,
@@ -667,19 +668,21 @@ function MeetingExperience({
           <GridLayout tracks={tracks} className="meeting-video-grid">
             <ParticipantTile />
           </GridLayout>
-          <ControlBar
-            variation="verbose"
-            saveUserChoices
-            controls={{
-              microphone: true,
-              camera: true,
-              screenShare: true,
-              chat: false,
-              leave: true,
-              settings: true,
-            }}
-            onDeviceError={onDeviceError}
-          />
+          <div className="meeting-call-controls" aria-label="Controles de audio e video">
+            <TrackToggle source={Track.Source.Microphone} showIcon onDeviceError={onDeviceError}>
+              Microfone
+            </TrackToggle>
+            <TrackToggle source={Track.Source.Camera} showIcon onDeviceError={onDeviceError}>
+              Camera
+            </TrackToggle>
+            <TrackToggle source={Track.Source.ScreenShare} showIcon>
+              Tela
+            </TrackToggle>
+            <DisconnectButton>
+              <LogOut size={16} />
+              Sair
+            </DisconnectButton>
+          </div>
           <div className="mobile-meeting-tabs" aria-label="Abrir painel da reuniao">
             <button
               type="button"
