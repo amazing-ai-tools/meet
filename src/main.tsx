@@ -15,8 +15,18 @@ import {
   Users,
   Video,
 } from 'lucide-react';
-import { LiveKitRoom, VideoConference } from '@livekit/components-react';
+import {
+  Chat,
+  ControlBar,
+  GridLayout,
+  LiveKitRoom,
+  ParticipantTile,
+  RoomAudioRenderer,
+  useParticipants,
+  useTracks,
+} from '@livekit/components-react';
 import '@livekit/components-styles';
+import { Track } from 'livekit-client';
 import { QRCodeSVG } from 'qrcode.react';
 
 import {
@@ -598,6 +608,7 @@ function MeetingRoomView({
         video
         audio
         className="livekit-shell"
+        data-lk-theme="default"
         onConnected={() => {
           setConnectionStatus('Conectado');
           setRoomError(undefined);
@@ -606,7 +617,7 @@ function MeetingRoomView({
         onError={handleRoomError}
         onMediaDeviceFailure={handleMediaDeviceFailure}
       >
-        <VideoConference />
+        <MeetingExperience onDeviceError={handleMediaDeviceFailure} />
       </LiveKitRoom>
 
       <aside className="host-panel">
@@ -623,6 +634,64 @@ function MeetingRoomView({
         </button>
       </aside>
     </section>
+  );
+}
+
+function MeetingExperience({ onDeviceError }: { onDeviceError: () => void }) {
+  const tracks = useTracks([
+    { source: Track.Source.Camera, withPlaceholder: true },
+    { source: Track.Source.ScreenShare, withPlaceholder: false },
+  ]);
+  const participants = useParticipants();
+
+  return (
+    <div className="meeting-livekit-layout">
+      <div className="meeting-video-panel">
+        <RoomAudioRenderer />
+        <GridLayout tracks={tracks} className="meeting-video-grid">
+          <ParticipantTile />
+        </GridLayout>
+        <ControlBar
+          variation="verbose"
+          saveUserChoices
+          controls={{
+            microphone: true,
+            camera: true,
+            screenShare: true,
+            chat: false,
+            leave: true,
+            settings: true,
+          }}
+          onDeviceError={onDeviceError}
+        />
+      </div>
+
+      <div className="meeting-side-panel">
+        <section className="participants-panel" aria-label="Participantes da reuniao">
+          <div className="panel-title-row">
+            <h2>Participantes</h2>
+            <span>{participants.length}</span>
+          </div>
+          <ul>
+            {participants.map((participant) => (
+              <li key={participant.identity}>
+                <span className="participant-dot" />
+                <span>{participant.name || participant.identity}</span>
+                {participant.isLocal ? <small>Voce</small> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="chat-panel" aria-label="Chat da reuniao">
+          <div className="panel-title-row">
+            <h2>Chat</h2>
+            <span>ao vivo</span>
+          </div>
+          <Chat />
+        </section>
+      </div>
+    </div>
   );
 }
 

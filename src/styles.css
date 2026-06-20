@@ -565,6 +565,178 @@ input:focus {
   background: #111827;
 }
 
+.meeting-livekit-layout {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  background: #111827;
+  color: #e5edf8;
+}
+
+.meeting-video-panel {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(260px, 1fr) auto;
+}
+
+.meeting-video-grid {
+  min-height: 0;
+  padding: 12px;
+}
+
+.meeting-video-grid .lk-participant-tile {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.meeting-livekit-layout .lk-control-bar {
+  padding: 10px;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0f172a;
+}
+
+.meeting-livekit-layout .lk-button,
+.meeting-livekit-layout button.lk-button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: #1d293d;
+  color: #f8fafc;
+  opacity: 1;
+}
+
+.meeting-livekit-layout .lk-button:hover,
+.meeting-livekit-layout button.lk-button:hover {
+  background: #26364f;
+}
+
+.meeting-livekit-layout .lk-button[aria-pressed="true"],
+.meeting-livekit-layout button.lk-button[aria-pressed="true"] {
+  background: #155eef;
+  color: #fff;
+}
+
+.meeting-livekit-layout .lk-disconnect-button,
+.meeting-livekit-layout button.lk-disconnect-button {
+  background: #e11d48;
+  color: #fff;
+}
+
+.meeting-side-panel {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f8fafc;
+  color: #172033;
+}
+
+.participants-panel,
+.chat-panel {
+  min-height: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel-title-row h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1rem;
+}
+
+.panel-title-row span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #174ea6;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.participants-panel ul {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+
+.participants-panel li {
+  min-width: 0;
+  padding: 9px 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #dce6f5;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+}
+
+.participants-panel li span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.participants-panel small {
+  color: #60708a;
+  font-size: 0.76rem;
+}
+
+.participant-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #22c55e;
+}
+
+.chat-panel {
+  overflow: hidden;
+}
+
+.chat-panel .lk-chat {
+  min-height: 260px;
+  height: 100%;
+  border: 1px solid #dce6f5;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+}
+
+.chat-panel .lk-chat-messages,
+.chat-panel .lk-list {
+  background: #fff;
+  color: #172033;
+}
+
+.chat-panel .lk-chat-form,
+.chat-panel .lk-chat-input {
+  background: #f8fafc;
+  color: #172033;
+}
+
+.chat-panel .lk-chat-form button {
+  border-radius: 8px;
+  background: #155eef;
+  color: #fff;
+}
+
 .meeting-alert {
   grid-column: 1 / -1;
   border: 1px solid rgba(247, 177, 92, 0.38);
@@ -616,6 +788,15 @@ input:focus {
   .meeting-stage {
     height: auto;
     min-height: 100vh;
+  }
+
+  .meeting-livekit-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .meeting-side-panel {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
 
