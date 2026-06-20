@@ -854,16 +854,19 @@ input:focus {
 
   .meeting-call-controls {
     padding: 8px;
-    justify-content: center;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: hidden;
   }
 
   .meeting-livekit-layout .lk-button,
   .meeting-livekit-layout button.lk-button {
-    min-width: 46px;
+    min-width: 0;
     min-height: 44px;
-    flex: 0 0 auto;
+    width: 100%;
+    justify-content: center;
+    padding-inline: 8px;
+    font-size: 0.86rem;
   }
 
   .meeting-livekit-layout .lk-button span,
