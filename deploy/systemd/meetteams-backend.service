@@ -1,5 +1,5 @@
 [Unit]
-Description=MeetTeams backend API
+Description=amazing-ai meet backend API
 After=network.target
 
 [Service]

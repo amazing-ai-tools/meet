@@ -47,7 +47,7 @@ declare global {
   }
 }
 
-const appName = import.meta.env.VITE_APP_NAME || 'MeetTeams';
+const appName = import.meta.env.VITE_APP_NAME || 'amazing-ai meet';
 const appDomain = import.meta.env.VITE_APP_DOMAIN || 'meet.app.amazing-ai.tools';
 const bugzeroAppKey = import.meta.env.VITE_BUGZERO_APP_KEY || '';
 const bugzeroWidgetUrl =
@@ -186,7 +186,7 @@ function Dashboard({
   onNavigate: (path: string) => void;
 }) {
   const [displayName, setDisplayName] = React.useState(session?.identity.displayName || '');
-  const [meetingTitle, setMeetingTitle] = React.useState('Nova reuniao MeetTeams');
+  const [meetingTitle, setMeetingTitle] = React.useState('Nova reuniao amazing-ai meet');
   const [teamName, setTeamName] = React.useState('Produto Amazing');
   const [roomTitle, setRoomTitle] = React.useState('Sala diaria');
   const [teams, setTeams] = React.useState<Team[]>([]);
@@ -230,7 +230,7 @@ function Dashboard({
     try {
       let activeSession = session;
       if (!activeSession) {
-        activeSession = await createGuestSession(displayName || 'Convidado MeetTeams');
+        activeSession = await createGuestSession(displayName || 'Convidado amazing-ai meet');
         onSession(activeSession);
       }
       const response = await createInstantRoom(meetingTitle, activeSession.identity.displayName);
@@ -280,7 +280,7 @@ function Dashboard({
     <section className="workspace">
       <header className="topbar">
         <div>
-          <h1>MeetTeams</h1>
+          <h1>{appName}</h1>
           <p>Reunioes avulsas por link e salas persistentes para times.</p>
         </div>
         <GoogleSignIn googleClientId={googleClientId} onSession={onSession} />
@@ -442,7 +442,7 @@ function GoogleSignIn({
   }, [googleClientId, onSession]);
 
   if (!googleClientId) {
-    return <span className="google-disabled">Google login aguardando `VITE_GOOGLE_CLIENT_ID`</span>;
+    return <span className="google-disabled">Google login aguardando configuracao</span>;
   }
 
   return (

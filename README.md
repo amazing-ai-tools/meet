@@ -1,6 +1,6 @@
-# MeetTeams
+# amazing-ai meet
 
-MeetTeams is a real-time meeting app for `meet.app.amazing-ai.tools`: instant link meetings without mandatory login, optional Google identity, and authenticated team workspaces with persistent rooms.
+amazing-ai meet is a real-time meeting app for `meet.app.amazing-ai.tools`: instant link meetings without mandatory login, optional Google identity, and authenticated team workspaces with persistent rooms.
 
 ## What is included
 

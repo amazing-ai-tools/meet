@@ -99,7 +99,7 @@ app.get('/api/me', withIdentity(false, (request, response, identity) => {
 }));
 
 app.post('/api/rooms/instant', withIdentity(false, async (request, response, identity) => {
-  const title = readString(request.body?.title, 'Reuniao MeetTeams');
+  const title = readString(request.body?.title, 'Reuniao amazing-ai meet');
   const host = identity || (await createAndSaveGuest(readString(request.body?.displayName, 'Host')));
   const room = await store.addRoom(createInstantRoom(host, title));
 
@@ -181,7 +181,7 @@ app.use((error: Error, _request: Request, response: Response, _next: unknown) =>
 
 await store.load();
 app.listen(port, () => {
-  console.log(`MeetTeams backend listening on ${port}`);
+  console.log(`amazing-ai meet backend listening on ${port}`);
 });
 
 function withIdentity(
