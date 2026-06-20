@@ -61,6 +61,12 @@ app.get('/api/health', (_request, response) => {
   });
 });
 
+app.get('/api/config', (_request, response) => {
+  response.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  });
+});
+
 app.post('/api/auth/guest', async (request, response, next) => {
   try {
     const { displayName } = request.body as { displayName?: string };

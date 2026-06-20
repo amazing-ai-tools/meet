@@ -44,6 +44,10 @@ jobs:
           LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY || 'devkey' }}
           LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET || 'devsecret' }}
           ENV
+          if [ -f "$HOME/meet.secrets" ]; then
+            sudo sed -i '/^GOOGLE_CLIENT_ID=/d;/^GOOGLE_CLIENT_SECRET=/d' /opt/meetteams/.env
+            grep -E '^(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET)=' "$HOME/meet.secrets" | sudo tee -a /opt/meetteams/.env >/dev/null
+          fi
           sudo rsync -a --delete \
             --exclude node_modules \
             --exclude dist \
@@ -55,7 +59,10 @@ jobs:
           sudo cp deploy/systemd/meetteams-backend.service /etc/systemd/system/meetteams-backend.service
           SERVICE_USER="$(id -un)"
           SERVICE_GROUP="$(id -gn)"
-          NODE_BIN="$(command -v node)"
+          NODE_BIN="/usr/bin/node"
+          if [ ! -x "$NODE_BIN" ]; then
+            NODE_BIN="$(command -v node)"
+          fi
           sudo sed -i "s/^User=.*/User=${SERVICE_USER}/; s/^Group=.*/Group=${SERVICE_GROUP}/; s#^ExecStart=.*#ExecStart=${NODE_BIN} server/dist/index.js#" /etc/systemd/system/meetteams-backend.service
           sudo chown -R "${SERVICE_USER}:${SERVICE_GROUP}" /opt/meetteams /var/lib/meetteams
           sudo systemctl daemon-reload

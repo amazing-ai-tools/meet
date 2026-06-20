@@ -24,6 +24,7 @@ import {
   createInstantRoom,
   createTeam,
   createTeamRoom,
+  getAppConfig,
   getRoom,
   joinRoom,
   listTeamRooms,
@@ -48,7 +49,6 @@ declare global {
 
 const appName = import.meta.env.VITE_APP_NAME || 'MeetTeams';
 const appDomain = import.meta.env.VITE_APP_DOMAIN || 'meet.app.amazing-ai.tools';
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const bugzeroAppKey = import.meta.env.VITE_BUGZERO_APP_KEY || '';
 const bugzeroWidgetUrl =
   import.meta.env.VITE_BUGZERO_WIDGET_URL || 'https://bugzero.amazing-ai.tools/widget.js';
@@ -69,6 +69,7 @@ function ensureBugZeroWidget() {
 function App() {
   const [session, setSession] = React.useState<Session | undefined>(() => loadSession());
   const [route, setRoute] = React.useState(() => window.location.pathname);
+  const [googleClientId, setGoogleClientId] = React.useState(() => import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
 
   React.useEffect(() => {
     ensureBugZeroWidget();
@@ -76,6 +77,16 @@ function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  React.useEffect(() => {
+    if (googleClientId) {
+      return;
+    }
+
+    getAppConfig()
+      .then((config) => setGoogleClientId(config.googleClientId))
+      .catch(() => setGoogleClientId(''));
+  }, [googleClientId]);
 
   const navigate = (path: string) => {
     window.history.pushState(null, '', path);
@@ -96,12 +107,14 @@ function App() {
         <MeetingRoute
           slug={roomMatch[1]}
           session={session}
+          googleClientId={googleClientId}
           onSession={setSession}
           onNavigate={navigate}
         />
       ) : (
         <Dashboard
           session={session}
+          googleClientId={googleClientId}
           onSession={setSession}
           onNavigate={navigate}
         />
@@ -163,10 +176,12 @@ function Sidebar({
 
 function Dashboard({
   session,
+  googleClientId,
   onSession,
   onNavigate,
 }: {
   session?: Session;
+  googleClientId: string;
   onSession: (session: Session) => void;
   onNavigate: (path: string) => void;
 }) {
@@ -268,7 +283,7 @@ function Dashboard({
           <h1>MeetTeams</h1>
           <p>Reunioes avulsas por link e salas persistentes para times.</p>
         </div>
-        <GoogleSignIn onSession={onSession} />
+        <GoogleSignIn googleClientId={googleClientId} onSession={onSession} />
       </header>
 
       {error && <div className="error-banner">{error}</div>}
@@ -385,7 +400,13 @@ function Dashboard({
   );
 }
 
-function GoogleSignIn({ onSession }: { onSession: (session: Session) => void }) {
+function GoogleSignIn({
+  googleClientId,
+  onSession,
+}: {
+  googleClientId: string;
+  onSession: (session: Session) => void;
+}) {
   const buttonRef = React.useRef<HTMLDivElement>(null);
   const [status, setStatus] = React.useState('');
 
@@ -418,7 +439,7 @@ function GoogleSignIn({ onSession }: { onSession: (session: Session) => void }) 
       });
     };
     document.head.appendChild(script);
-  }, [onSession]);
+  }, [googleClientId, onSession]);
 
   if (!googleClientId) {
     return <span className="google-disabled">Google login aguardando `VITE_GOOGLE_CLIENT_ID`</span>;
@@ -435,11 +456,13 @@ function GoogleSignIn({ onSession }: { onSession: (session: Session) => void }) 
 function MeetingRoute({
   slug,
   session,
+  googleClientId,
   onSession,
   onNavigate,
 }: {
   slug: string;
   session?: Session;
+  googleClientId: string;
   onSession: (session: Session) => void;
   onNavigate: (path: string) => void;
 }) {
@@ -511,7 +534,7 @@ function MeetingRoute({
               aria-label="Seu nome para entrar"
             />
           )}
-          <GoogleSignIn onSession={onSession} />
+          <GoogleSignIn googleClientId={googleClientId} onSession={onSession} />
           <button className="primary-action" onClick={enterRoom} disabled={busy || (!session && displayName.trim().length < 2)}>
             <Video size={18} />
             Entrar agora

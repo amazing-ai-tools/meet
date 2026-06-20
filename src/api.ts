@@ -34,6 +34,10 @@ export async function createGoogleSession(credential: string): Promise<Session> 
   return session;
 }
 
+export async function getAppConfig(): Promise<{ googleClientId: string }> {
+  return api<{ googleClientId: string }>('/config');
+}
+
 export async function createInstantRoom(title: string, displayName: string): Promise<{
   room: MeetingRoom;
   host: Session['identity'];
