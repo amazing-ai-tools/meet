@@ -5,6 +5,7 @@ import {
   CalendarClock,
   Copy,
   LogOut,
+  MessageSquare,
   Mic,
   MonitorUp,
   Plus,
@@ -47,6 +48,7 @@ import {
 } from './api';
 import type { JoinResponse, MeetingRoom, Session, Team } from './types';
 import { createMeetingUrl } from './meetingLinks';
+import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import './styles.css';
 
 declare global {
@@ -619,7 +621,7 @@ function MeetingRoomView({
         onError={handleRoomError}
         onMediaDeviceFailure={handleMediaDeviceFailure}
       >
-        <MeetingExperience onDeviceError={handleMediaDeviceFailure} />
+        <MeetingExperience meetingUrl={meetingUrl} onDeviceError={handleMediaDeviceFailure} />
       </LiveKitRoom>
 
       <aside className="host-panel">
@@ -639,13 +641,23 @@ function MeetingRoomView({
   );
 }
 
-function MeetingExperience({ onDeviceError }: { onDeviceError: () => void }) {
+function MeetingExperience({
+  meetingUrl,
+  onDeviceError,
+}: {
+  meetingUrl: string;
+  onDeviceError: () => void;
+}) {
   const layoutContext = useCreateLayoutContext();
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
     { source: Track.Source.ScreenShare, withPlaceholder: false },
   ]);
   const participants = useParticipants();
+  const [mobilePanel, setMobilePanel] = React.useState<MobileMeetingPanel>(null);
+  const togglePanel = (panel: Exclude<MobileMeetingPanel, null>) => {
+    setMobilePanel((current) => toggleMobilePanel(current, panel));
+  };
 
   return (
     <LayoutContextProvider value={layoutContext}>
@@ -668,9 +680,38 @@ function MeetingExperience({ onDeviceError }: { onDeviceError: () => void }) {
             }}
             onDeviceError={onDeviceError}
           />
+          <div className="mobile-meeting-tabs" aria-label="Abrir painel da reuniao">
+            <button
+              type="button"
+              className={mobilePanel === 'participants' ? 'active' : ''}
+              aria-expanded={mobilePanel === 'participants'}
+              onClick={() => togglePanel('participants')}
+            >
+              <Users size={16} />
+              Pessoas
+            </button>
+            <button
+              type="button"
+              className={mobilePanel === 'chat' ? 'active' : ''}
+              aria-expanded={mobilePanel === 'chat'}
+              onClick={() => togglePanel('chat')}
+            >
+              <MessageSquare size={16} />
+              Chat
+            </button>
+            <button
+              type="button"
+              className={mobilePanel === 'share' ? 'active' : ''}
+              aria-expanded={mobilePanel === 'share'}
+              onClick={() => togglePanel('share')}
+            >
+              <QrCode size={16} />
+              Link
+            </button>
+          </div>
         </div>
 
-        <div className="meeting-side-panel">
+        <div className={mobilePanel ? `meeting-side-panel is-${mobilePanel}-open` : 'meeting-side-panel'}>
           <section className="participants-panel" aria-label="Participantes da reuniao">
             <div className="panel-title-row">
               <h2>Participantes</h2>
@@ -693,6 +734,10 @@ function MeetingExperience({ onDeviceError }: { onDeviceError: () => void }) {
               <span>ao vivo</span>
             </div>
             <Chat />
+          </section>
+
+          <section className="share-panel" aria-label="Compartilhar reuniao">
+            <MeetingShareCard url={meetingUrl} label="Compartilhar reuniao" compact />
           </section>
         </div>
       </div>

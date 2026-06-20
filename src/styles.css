@@ -625,6 +625,10 @@ input:focus {
   color: #fff;
 }
 
+.mobile-meeting-tabs {
+  display: none;
+}
+
 .meeting-side-panel {
   min-width: 0;
   min-height: 0;
@@ -746,6 +750,10 @@ input:focus {
   color: #fff;
 }
 
+.share-panel {
+  display: none;
+}
+
 .meeting-alert {
   grid-column: 1 / -1;
   border: 1px solid rgba(247, 177, 92, 0.38);
@@ -795,17 +803,144 @@ input:focus {
   }
 
   .meeting-stage {
-    height: auto;
+    height: 100dvh;
     min-height: 100vh;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    padding: 10px;
+    gap: 10px;
+    overflow: hidden;
   }
 
   .meeting-livekit-layout {
-    grid-template-columns: 1fr;
+    position: relative;
+    height: 100%;
+    display: block;
+    overflow: hidden;
+  }
+
+  .livekit-shell {
+    min-height: 0;
+  }
+
+  .meeting-video-panel {
+    height: 100%;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+
+  .meeting-video-grid {
+    padding: 6px;
+  }
+
+  .meeting-video-grid .lk-grid-layout {
+    gap: 6px;
+  }
+
+  .meeting-video-grid .lk-participant-tile {
+    min-height: 38dvh;
+  }
+
+  .meeting-livekit-layout .lk-control-bar {
+    padding: 8px;
+    justify-content: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .meeting-livekit-layout .lk-button,
+  .meeting-livekit-layout button.lk-button {
+    min-width: 46px;
+    min-height: 44px;
+    flex: 0 0 auto;
+  }
+
+  .meeting-livekit-layout .lk-button span,
+  .meeting-livekit-layout button.lk-button span {
+    white-space: nowrap;
+  }
+
+  .mobile-meeting-tabs {
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: #0b1120;
+  }
+
+  .mobile-meeting-tabs button {
+    min-width: 0;
+    min-height: 42px;
+    padding: 8px 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: #172033;
+    color: #dbeafe;
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .mobile-meeting-tabs button.active {
+    border-color: #7db2ff;
+    background: #155eef;
+    color: #fff;
   }
 
   .meeting-side-panel {
-    border-left: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    z-index: 20;
+    max-height: min(54dvh, 430px);
+    padding: 12px;
+    display: none;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.34);
+    border-radius: 12px;
+    background: #f8fafc;
+    box-shadow: 0 22px 80px rgba(2, 6, 23, 0.38);
+  }
+
+  .meeting-side-panel.is-participants-open,
+  .meeting-side-panel.is-chat-open,
+  .meeting-side-panel.is-share-open {
+    display: grid;
+  }
+
+  .meeting-side-panel.is-participants-open {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .meeting-side-panel.is-chat-open {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .meeting-side-panel.is-share-open {
+    grid-template-rows: auto;
+  }
+
+  .meeting-side-panel .participants-panel,
+  .meeting-side-panel .chat-panel,
+  .meeting-side-panel .share-panel {
+    display: none;
+  }
+
+  .meeting-side-panel.is-participants-open .participants-panel,
+  .meeting-side-panel.is-chat-open .chat-panel,
+  .meeting-side-panel.is-share-open .share-panel {
+    display: grid;
+  }
+
+  .participants-panel {
+    overflow: auto;
+  }
+
+  .chat-panel {
+    min-height: 320px;
   }
 
   .chat-panel .lk-chat {
@@ -815,6 +950,19 @@ input:focus {
     bottom: auto;
     width: 100%;
     max-width: 100%;
+    min-height: 300px;
+  }
+
+  .share-panel .share-card {
+    max-width: 100%;
+  }
+
+  .share-panel .share-card code {
+    font-size: 0.72rem;
+  }
+
+  .host-panel {
+    display: none;
   }
 }
 
@@ -833,6 +981,29 @@ input:focus {
   .meeting-actions {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .meeting-stage {
+    padding: 8px;
+  }
+
+  .meeting-header h1 {
+    font-size: 1rem;
+  }
+
+  .meeting-header p {
+    font-size: 0.78rem;
+  }
+
+  .meeting-actions .secondary-action,
+  .meeting-actions .leave-button {
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  .meeting-video-grid .lk-participant-tile {
+    min-height: 44dvh;
   }
 
   .command-form,
