@@ -41,13 +41,14 @@ jobs:
           SESSION_SECRET=${{ secrets.SESSION_SECRET || 'dev-session-secret' }}
           GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
           LIVEKIT_URL=${{ vars.LIVEKIT_URL || 'wss://livekit.meet.api.amazing-ai.tools' }}
-          LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY || 'devkey' }}
-          LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET || 'devsecret' }}
+          LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}
+          LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
           ENV
           if [ -f "$HOME/meet.secrets" ]; then
             sudo sed -i '/^GOOGLE_CLIENT_ID=/d;/^GOOGLE_CLIENT_SECRET=/d;/^LIVEKIT_URL=/d;/^LIVEKIT_API_KEY=/d;/^LIVEKIT_API_SECRET=/d' /opt/meetteams/.env
             sudo grep -E '^(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET|LIVEKIT_URL|LIVEKIT_API_KEY|LIVEKIT_API_SECRET)=' "$HOME/meet.secrets" | sudo tee -a /opt/meetteams/.env >/dev/null
           fi
+          sudo sh -c '. /opt/meetteams/.env && test -n "$LIVEKIT_URL" && test "$LIVEKIT_API_KEY" != "devkey" && test -n "$LIVEKIT_API_KEY" && test "$LIVEKIT_API_SECRET" != "devsecret" && test -n "$LIVEKIT_API_SECRET"'
           sudo rsync -a --delete \
             --exclude node_modules \
             --exclude dist \

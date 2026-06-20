@@ -15,7 +15,7 @@ import {
   verifySession,
   type AuthConfig,
 } from './auth.js';
-import { createLiveKitJoinToken, type LiveKitConfig } from './livekit.js';
+import { createLiveKitJoinToken, defaultLiveKitUrl, type LiveKitConfig } from './livekit.js';
 import { JsonStore } from './store.js';
 
 const port = Number(process.env.PORT || 8787);
@@ -28,7 +28,7 @@ const authConfig: AuthConfig = {
 };
 
 const liveKitConfig: LiveKitConfig = {
-  url: process.env.LIVEKIT_URL || 'ws://localhost:7880',
+  url: process.env.LIVEKIT_URL || defaultLiveKitUrl,
   apiKey: process.env.LIVEKIT_API_KEY || 'devkey',
   apiSecret: process.env.LIVEKIT_API_SECRET || 'secret',
 };

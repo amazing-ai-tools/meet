@@ -12,5 +12,5 @@ keys:
   devkey: devsecret
 turn:
   enabled: true
-  domain: livekit.meet.app.amazing-ai.tools
+  domain: livekit.meet.api.amazing-ai.tools
   tls_port: 5349

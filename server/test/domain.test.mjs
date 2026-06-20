@@ -9,6 +9,7 @@ import {
   canHostControlParticipant,
   createId,
 } from '../dist/domain.js';
+import { defaultLiveKitUrl } from '../dist/livekit.js';
 
 test('createId returns url-safe readable identifiers', () => {
   const id = createId('room');
@@ -61,4 +62,9 @@ test('host controls are limited to the room host', () => {
   assert.equal(canHostControlParticipant(room, host, participant.id), true);
   assert.equal(canHostControlParticipant(room, participant, host.id), false);
   assert.equal(canHostControlParticipant(room, host, host.id), false);
+});
+
+test('default LiveKit URL is the public Caddy websocket endpoint', () => {
+  assert.equal(defaultLiveKitUrl, 'wss://livekit.meet.api.amazing-ai.tools');
+  assert.doesNotMatch(defaultLiveKitUrl, /localhost|127\.0\.0\.1|^ws:\/\//);
 });

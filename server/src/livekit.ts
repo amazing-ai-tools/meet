@@ -2,6 +2,8 @@ import { AccessToken } from 'livekit-server-sdk';
 
 import type { Identity, MeetingParticipant, MeetingRoom } from './domain.js';
 
+export const defaultLiveKitUrl = 'wss://livekit.meet.api.amazing-ai.tools';
+
 export type LiveKitConfig = {
   url: string;
   apiKey: string;
