@@ -547,19 +547,36 @@ function MeetingRoute({
 
 function MeetingRoomView({ join, onNavigate }: { join: JoinResponse; onNavigate: (path: string) => void }) {
   const isHost = join.participant.role === 'host';
+  const [connectionStatus, setConnectionStatus] = React.useState('Conectando ao LiveKit...');
+  const [roomError, setRoomError] = React.useState<string | undefined>();
+
+  const handleRoomError = React.useCallback((error: Error) => {
+    setConnectionStatus('Conexao interrompida');
+    setRoomError(error.message || 'Nao foi possivel conectar audio e video.');
+  }, []);
+
+  const handleMediaDeviceFailure = React.useCallback(() => {
+    setRoomError('Permita acesso a camera e microfone no navegador para publicar audio e video.');
+  }, []);
 
   return (
     <section className="meeting-stage">
       <header className="meeting-header">
         <div>
           <h1>{join.room.title}</h1>
-          <p>/{join.room.slug} · {join.identity.displayName}</p>
+          <p>/{join.room.slug} · {join.identity.displayName} · {connectionStatus}</p>
         </div>
         <button className="leave-button" onClick={() => onNavigate('/')}>
           <LogOut size={17} />
           Sair
         </button>
       </header>
+
+      {roomError ? (
+        <div className="meeting-alert" role="alert">
+          {roomError}
+        </div>
+      ) : null}
 
       <LiveKitRoom
         token={join.livekit.token}
@@ -568,6 +585,13 @@ function MeetingRoomView({ join, onNavigate }: { join: JoinResponse; onNavigate:
         video
         audio
         className="livekit-shell"
+        onConnected={() => {
+          setConnectionStatus('Conectado');
+          setRoomError(undefined);
+        }}
+        onDisconnected={() => setConnectionStatus('Desconectado')}
+        onError={handleRoomError}
+        onMediaDeviceFailure={handleMediaDeviceFailure}
       >
         <VideoConference />
       </LiveKitRoom>
