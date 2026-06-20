@@ -56,6 +56,11 @@ import {
 } from './api';
 import type { JoinResponse, MeetingRoom, Session, Team } from './types';
 import { getNextFacingMode, getNextVideoDevice } from './cameraDevices';
+import {
+  getFullscreenStageToggleLabel,
+  toggleFullscreenStageFocus,
+  type FullscreenStageFocus,
+} from './fullscreenStage';
 import { toggleMeetingFullscreen } from './fullscreen';
 import { createMeetingUrl } from './meetingLinks';
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
@@ -666,19 +671,58 @@ function MeetingExperience({
   ]);
   const participants = useParticipants();
   const [mobilePanel, setMobilePanel] = React.useState<MobileMeetingPanel>(null);
+  const [fullscreenActive, setFullscreenActive] = React.useState(false);
+  const [fullscreenFocus, setFullscreenFocus] = React.useState<FullscreenStageFocus>('friends');
+
+  React.useEffect(() => {
+    const updateFullscreenState = () => {
+      const fullscreenDocument = document as Document & { webkitFullscreenElement?: Element | null };
+      const isActive = Boolean(fullscreenDocument.fullscreenElement || fullscreenDocument.webkitFullscreenElement);
+      setFullscreenActive(isActive);
+      if (!isActive) {
+        setFullscreenFocus('friends');
+      }
+    };
+    document.addEventListener('fullscreenchange', updateFullscreenState);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenState);
+    return () => {
+      document.removeEventListener('fullscreenchange', updateFullscreenState);
+      document.removeEventListener('webkitfullscreenchange', updateFullscreenState);
+    };
+  }, []);
+
   const togglePanel = (panel: Exclude<MobileMeetingPanel, null>) => {
     setMobilePanel((current) => toggleMobilePanel(current, panel));
+  };
+  const toggleFullscreen = async () => {
+    const element = stageRef.current || document.documentElement;
+    const entered = await toggleMeetingFullscreen(element);
+    setFullscreenActive(entered);
+  };
+  const toggleStageFocus = () => {
+    setFullscreenFocus((current) => toggleFullscreenStageFocus(current));
   };
 
   return (
     <LayoutContextProvider value={layoutContext}>
-      <div className="meeting-livekit-layout" ref={stageRef}>
+      <div
+        className={
+          fullscreenActive
+            ? `meeting-livekit-layout is-fullscreen is-stage-${fullscreenFocus}`
+            : 'meeting-livekit-layout'
+        }
+        ref={stageRef}
+      >
         <div className="meeting-video-panel">
           <RoomAudioRenderer />
-          <GridLayout tracks={tracks} className="meeting-video-grid">
-            <ParticipantTile />
-          </GridLayout>
-          <MeetingCallControls stageRef={stageRef} onDeviceError={onDeviceError} />
+          <MeetingVideoStage tracks={tracks} fullscreenActive={fullscreenActive} fullscreenFocus={fullscreenFocus} />
+          <MeetingCallControls
+            fullscreenActive={fullscreenActive}
+            fullscreenFocus={fullscreenFocus}
+            onDeviceError={onDeviceError}
+            onToggleFullscreen={toggleFullscreen}
+            onToggleStageFocus={toggleStageFocus}
+          />
           <div className="mobile-meeting-tabs" aria-label="Abrir painel da reuniao">
             <button
               type="button"
@@ -744,12 +788,74 @@ function MeetingExperience({
   );
 }
 
-function MeetingCallControls({
-  stageRef,
-  onDeviceError,
+type MeetingTrack = ReturnType<typeof useTracks>[number];
+
+function MeetingVideoStage({
+  tracks,
+  fullscreenActive,
+  fullscreenFocus,
 }: {
-  stageRef: React.RefObject<HTMLElement>;
+  tracks: MeetingTrack[];
+  fullscreenActive: boolean;
+  fullscreenFocus: FullscreenStageFocus;
+}) {
+  if (!fullscreenActive) {
+    return (
+      <GridLayout tracks={tracks} className="meeting-video-grid">
+        <ParticipantTile />
+      </GridLayout>
+    );
+  }
+
+  const localCameraTrack =
+    tracks.find((track) => track.participant.isLocal && track.source === Track.Source.Camera) ||
+    tracks.find((track) => track.participant.isLocal);
+  const friendTracks = tracks.filter((track) => !track.participant.isLocal);
+  const selfTracks = localCameraTrack ? [localCameraTrack] : [];
+  const primaryTracks = fullscreenFocus === 'self' ? selfTracks : friendTracks;
+
+  return (
+    <div className="fullscreen-stage" aria-label="Video em tela cheia">
+      <div className={primaryTracks.length > 1 ? 'fullscreen-stage-grid' : 'fullscreen-stage-grid single'}>
+        {primaryTracks.length > 0 ? (
+          primaryTracks.map((track) => (
+            <ParticipantTile
+              key={`${track.participant.identity}-${track.source}`}
+              trackRef={track}
+              className="fullscreen-stage-tile"
+            />
+          ))
+        ) : (
+          <div className="fullscreen-stage-empty">
+            {fullscreenFocus === 'friends'
+              ? 'Aguardando a camera dos seus amigos.'
+              : 'Ative sua camera para se ver em tela cheia.'}
+          </div>
+        )}
+      </div>
+
+      {fullscreenFocus === 'friends' && localCameraTrack ? (
+        <aside className="local-camera-preview" aria-label="Sua camera">
+          <ParticipantTile trackRef={localCameraTrack} className="local-camera-preview-tile" />
+          <span>Voce</span>
+        </aside>
+      ) : null}
+    </div>
+  );
+}
+
+function MeetingCallControls({
+  fullscreenActive,
+  fullscreenFocus,
+  onDeviceError,
+  onToggleFullscreen,
+  onToggleStageFocus,
+}: {
+  fullscreenActive: boolean;
+  fullscreenFocus: FullscreenStageFocus;
   onDeviceError: () => void;
+  onToggleFullscreen: () => void;
+  onToggleStageFocus: () => void;
 }) {
   const room = useRoomContext();
   const {
@@ -764,15 +870,6 @@ function MeetingCallControls({
   const videoDevices = useMediaDevices({ kind: 'videoinput', onError: onDeviceError });
   const [facingMode, setFacingMode] = React.useState<'user' | 'environment'>('user');
   const [busyCameraSwitch, setBusyCameraSwitch] = React.useState(false);
-  const [fullscreenActive, setFullscreenActive] = React.useState(false);
-
-  React.useEffect(() => {
-    const updateFullscreenState = () => {
-      setFullscreenActive(Boolean(document.fullscreenElement));
-    };
-    document.addEventListener('fullscreenchange', updateFullscreenState);
-    return () => document.removeEventListener('fullscreenchange', updateFullscreenState);
-  }, []);
 
   const switchCamera = async () => {
     if (busyCameraSwitch) {
@@ -797,12 +894,6 @@ function MeetingCallControls({
     } finally {
       setBusyCameraSwitch(false);
     }
-  };
-
-  const toggleFullscreen = async () => {
-    const element = stageRef.current || document.documentElement;
-    const entered = await toggleMeetingFullscreen(element);
-    setFullscreenActive(entered);
   };
 
   return (
@@ -838,8 +929,16 @@ function MeetingCallControls({
         active={fullscreenActive}
         icon={<Maximize2 size={18} />}
         label="Tela cheia"
-        onClick={toggleFullscreen}
+        onClick={onToggleFullscreen}
       />
+      {fullscreenActive ? (
+        <MeetingControlButton
+          active={fullscreenFocus === 'self'}
+          icon={<Users size={18} />}
+          label={getFullscreenStageToggleLabel(fullscreenFocus)}
+          onClick={onToggleStageFocus}
+        />
+      ) : null}
       <DisconnectButton className="meeting-control-button meeting-control-danger">
         <LogOut size={18} />
         <span>Sair</span>

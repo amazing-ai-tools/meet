@@ -591,6 +591,77 @@ input:focus {
   overflow: hidden;
 }
 
+.fullscreen-stage {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  padding: 12px;
+  background: #050914;
+}
+
+.fullscreen-stage-grid {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.fullscreen-stage-grid.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.fullscreen-stage-tile,
+.local-camera-preview-tile {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.fullscreen-stage-tile {
+  min-height: 0;
+  height: 100%;
+}
+
+.fullscreen-stage-empty {
+  min-height: 280px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(148, 163, 184, 0.42);
+  border-radius: 8px;
+  color: #cbd5e1;
+  text-align: center;
+  padding: 18px;
+}
+
+.local-camera-preview {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 12;
+  width: min(28vw, 220px);
+  min-width: 128px;
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.82);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+}
+
+.local-camera-preview .local-camera-preview-tile {
+  aspect-ratio: 16 / 10;
+}
+
+.local-camera-preview span {
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-align: center;
+}
+
 .meeting-call-controls {
   padding: 10px;
   display: flex;
@@ -642,6 +713,16 @@ input:focus {
 .meeting-livekit-layout button.meeting-control-button.is-active {
   background: #155eef;
   color: #fff;
+}
+
+.meeting-livekit-layout.is-fullscreen {
+  width: 100%;
+  height: 100%;
+  background: #050914;
+}
+
+.meeting-livekit-layout.is-fullscreen .meeting-video-panel {
+  height: 100%;
 }
 
 .meeting-control-danger,
@@ -881,6 +962,10 @@ input:focus {
     overflow: hidden;
   }
 
+  .meeting-livekit-layout.is-fullscreen .meeting-call-controls {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .meeting-control-button,
   .meeting-livekit-layout button.meeting-control-button {
     min-width: 0;
@@ -907,6 +992,31 @@ input:focus {
     text-overflow: ellipsis;
     white-space: nowrap;
     line-height: 1.05;
+  }
+
+  .fullscreen-stage {
+    padding: 6px;
+  }
+
+  .fullscreen-stage-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .fullscreen-stage-grid:not(.single) {
+    grid-auto-rows: minmax(160px, 1fr);
+  }
+
+  .local-camera-preview {
+    right: 10px;
+    bottom: 10px;
+    width: min(38vw, 148px);
+    min-width: 108px;
+    padding: 5px;
+  }
+
+  .local-camera-preview span {
+    font-size: 0.68rem;
   }
 
   .mobile-meeting-tabs {
