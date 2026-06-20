@@ -663,6 +663,8 @@ input:focus {
 }
 
 .meeting-call-controls {
+  position: relative;
+  z-index: 16;
   padding: 10px;
   display: flex;
   align-items: center;
