@@ -906,7 +906,7 @@ input:focus {
     position: absolute;
     left: 8px;
     right: 8px;
-    bottom: 8px;
+    bottom: 66px;
     z-index: 20;
     max-height: min(54dvh, 430px);
     padding: 12px;
