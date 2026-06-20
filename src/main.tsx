@@ -118,7 +118,7 @@ function App() {
   const roomMatch = route.match(/^\/r\/([a-z0-9]+)$/);
 
   return (
-    <main className="product-shell">
+    <main className={roomMatch ? 'product-shell meeting-shell' : 'product-shell'}>
       <Sidebar session={session} onNavigate={navigate} onLogout={logout} />
       {roomMatch ? (
         <MeetingRoute

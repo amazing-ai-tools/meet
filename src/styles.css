@@ -782,11 +782,21 @@ input:focus {
     grid-template-columns: 1fr;
   }
 
+  .product-shell.meeting-shell {
+    min-height: 100dvh;
+    display: block;
+    background: #0c1222;
+  }
+
   .side-rail {
     min-height: auto;
     flex-direction: row;
     align-items: center;
     overflow-x: auto;
+  }
+
+  .meeting-shell .side-rail {
+    display: none;
   }
 
   .rail-nav,
@@ -836,7 +846,7 @@ input:focus {
   }
 
   .meeting-video-grid .lk-participant-tile {
-    min-height: 38dvh;
+    min-height: 48dvh;
   }
 
   .meeting-livekit-layout .lk-control-bar {
@@ -983,6 +993,10 @@ input:focus {
     flex-wrap: wrap;
   }
 
+  .meeting-shell .meeting-actions {
+    display: none;
+  }
+
   .meeting-stage {
     padding: 8px;
   }
@@ -1003,7 +1017,7 @@ input:focus {
   }
 
   .meeting-video-grid .lk-participant-tile {
-    min-height: 44dvh;
+    min-height: 58dvh;
   }
 
   .command-form,
