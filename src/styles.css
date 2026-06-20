@@ -713,10 +713,19 @@ input:focus {
 .chat-panel .lk-chat {
   min-height: 260px;
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  position: static;
+  inset: auto;
   border: 1px solid #dce6f5;
+  border-left: 1px solid #dce6f5;
   border-radius: 8px;
   background: #fff;
   color: #172033;
+}
+
+.chat-panel .lk-chat-header .lk-close-button {
+  display: none;
 }
 
 .chat-panel .lk-chat-messages,
@@ -797,6 +806,15 @@ input:focus {
   .meeting-side-panel {
     border-left: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .chat-panel .lk-chat {
+    position: static;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: 100%;
   }
 }
 
