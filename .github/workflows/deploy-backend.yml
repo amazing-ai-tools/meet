@@ -46,7 +46,7 @@ jobs:
           ENV
           if [ -f "$HOME/meet.secrets" ]; then
             sudo sed -i '/^GOOGLE_CLIENT_ID=/d;/^GOOGLE_CLIENT_SECRET=/d;/^LIVEKIT_URL=/d;/^LIVEKIT_API_KEY=/d;/^LIVEKIT_API_SECRET=/d' /opt/meetteams/.env
-            grep -E '^(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET|LIVEKIT_URL|LIVEKIT_API_KEY|LIVEKIT_API_SECRET)=' "$HOME/meet.secrets" | sudo tee -a /opt/meetteams/.env >/dev/null
+            sudo grep -E '^(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET|LIVEKIT_URL|LIVEKIT_API_KEY|LIVEKIT_API_SECRET)=' "$HOME/meet.secrets" | sudo tee -a /opt/meetteams/.env >/dev/null
           fi
           sudo rsync -a --delete \
             --exclude node_modules \
