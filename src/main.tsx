@@ -5,16 +5,20 @@ import {
   CalendarClock,
   Copy,
   LogOut,
+  Maximize2,
   MessageSquare,
   Mic,
+  MicOff,
   MonitorUp,
   Plus,
   QrCode,
   Shield,
   Sparkles,
+  SwitchCamera,
   UserPlus,
   Users,
   Video,
+  VideoOff,
 } from 'lucide-react';
 import {
   Chat,
@@ -24,10 +28,13 @@ import {
   LiveKitRoom,
   ParticipantTile,
   RoomAudioRenderer,
-  TrackToggle,
   useCreateLayoutContext,
+  useLocalParticipant,
+  useMediaDevices,
   useParticipants,
+  useRoomContext,
   useTracks,
+  useTrackToggle,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { Track } from 'livekit-client';
@@ -48,6 +55,8 @@ import {
   loadSession,
 } from './api';
 import type { JoinResponse, MeetingRoom, Session, Team } from './types';
+import { getNextFacingMode, getNextVideoDevice } from './cameraDevices';
+import { toggleMeetingFullscreen } from './fullscreen';
 import { createMeetingUrl } from './meetingLinks';
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import './styles.css';
@@ -650,6 +659,7 @@ function MeetingExperience({
   onDeviceError: () => void;
 }) {
   const layoutContext = useCreateLayoutContext();
+  const stageRef = React.useRef<HTMLDivElement>(null);
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
     { source: Track.Source.ScreenShare, withPlaceholder: false },
@@ -662,27 +672,13 @@ function MeetingExperience({
 
   return (
     <LayoutContextProvider value={layoutContext}>
-      <div className="meeting-livekit-layout">
+      <div className="meeting-livekit-layout" ref={stageRef}>
         <div className="meeting-video-panel">
           <RoomAudioRenderer />
           <GridLayout tracks={tracks} className="meeting-video-grid">
             <ParticipantTile />
           </GridLayout>
-          <div className="meeting-call-controls" aria-label="Controles de audio e video">
-            <TrackToggle source={Track.Source.Microphone} showIcon onDeviceError={onDeviceError}>
-              Microfone
-            </TrackToggle>
-            <TrackToggle source={Track.Source.Camera} showIcon onDeviceError={onDeviceError}>
-              Camera
-            </TrackToggle>
-            <TrackToggle source={Track.Source.ScreenShare} showIcon>
-              Tela
-            </TrackToggle>
-            <DisconnectButton>
-              <LogOut size={16} />
-              Sair
-            </DisconnectButton>
-          </div>
+          <MeetingCallControls stageRef={stageRef} onDeviceError={onDeviceError} />
           <div className="mobile-meeting-tabs" aria-label="Abrir painel da reuniao">
             <button
               type="button"
@@ -745,6 +741,137 @@ function MeetingExperience({
         </div>
       </div>
     </LayoutContextProvider>
+  );
+}
+
+function MeetingCallControls({
+  stageRef,
+  onDeviceError,
+}: {
+  stageRef: React.RefObject<HTMLElement>;
+  onDeviceError: () => void;
+}) {
+  const room = useRoomContext();
+  const {
+    isMicrophoneEnabled,
+    isCameraEnabled,
+    isScreenShareEnabled,
+    localParticipant,
+  } = useLocalParticipant();
+  const microphone = useTrackToggle({ source: Track.Source.Microphone, onDeviceError });
+  const camera = useTrackToggle({ source: Track.Source.Camera, onDeviceError });
+  const screenShare = useTrackToggle({ source: Track.Source.ScreenShare, onDeviceError });
+  const videoDevices = useMediaDevices({ kind: 'videoinput', onError: onDeviceError });
+  const [facingMode, setFacingMode] = React.useState<'user' | 'environment'>('user');
+  const [busyCameraSwitch, setBusyCameraSwitch] = React.useState(false);
+  const [fullscreenActive, setFullscreenActive] = React.useState(false);
+
+  React.useEffect(() => {
+    const updateFullscreenState = () => {
+      setFullscreenActive(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', updateFullscreenState);
+    return () => document.removeEventListener('fullscreenchange', updateFullscreenState);
+  }, []);
+
+  const switchCamera = async () => {
+    if (busyCameraSwitch) {
+      return;
+    }
+
+    setBusyCameraSwitch(true);
+    try {
+      const activeDeviceId = room.getActiveDevice('videoinput');
+      const nextDevice = getNextVideoDevice(videoDevices, activeDeviceId);
+      if (nextDevice && videoDevices.length > 1) {
+        await localParticipant.setCameraEnabled(true, { deviceId: nextDevice.deviceId });
+        await room.switchActiveDevice('videoinput', nextDevice.deviceId, true);
+        return;
+      }
+
+      const nextFacingMode = getNextFacingMode(facingMode);
+      await localParticipant.setCameraEnabled(true, { facingMode: nextFacingMode });
+      setFacingMode(nextFacingMode);
+    } catch {
+      onDeviceError();
+    } finally {
+      setBusyCameraSwitch(false);
+    }
+  };
+
+  const toggleFullscreen = async () => {
+    const element = stageRef.current || document.documentElement;
+    const entered = await toggleMeetingFullscreen(element);
+    setFullscreenActive(entered);
+  };
+
+  return (
+    <div className="meeting-call-controls" aria-label="Controles de audio e video">
+      <MeetingControlButton
+        active={isMicrophoneEnabled}
+        disabled={microphone.pending}
+        icon={isMicrophoneEnabled ? <Mic size={18} /> : <MicOff size={18} />}
+        label="Microfone"
+        onClick={() => microphone.toggle()}
+      />
+      <MeetingControlButton
+        active={isCameraEnabled}
+        disabled={camera.pending}
+        icon={isCameraEnabled ? <Video size={18} /> : <VideoOff size={18} />}
+        label="Camera"
+        onClick={() => camera.toggle()}
+      />
+      <MeetingControlButton
+        disabled={busyCameraSwitch}
+        icon={<SwitchCamera size={18} />}
+        label="Virar"
+        onClick={switchCamera}
+      />
+      <MeetingControlButton
+        active={isScreenShareEnabled}
+        disabled={screenShare.pending}
+        icon={<MonitorUp size={18} />}
+        label="Tela"
+        onClick={() => screenShare.toggle()}
+      />
+      <MeetingControlButton
+        active={fullscreenActive}
+        icon={<Maximize2 size={18} />}
+        label="Tela cheia"
+        onClick={toggleFullscreen}
+      />
+      <DisconnectButton className="meeting-control-button meeting-control-danger">
+        <LogOut size={18} />
+        <span>Sair</span>
+      </DisconnectButton>
+    </div>
+  );
+}
+
+function MeetingControlButton({
+  active = false,
+  disabled = false,
+  icon,
+  label,
+  onClick,
+}: {
+  active?: boolean;
+  disabled?: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={active ? 'meeting-control-button is-active' : 'meeting-control-button'}
+      disabled={disabled}
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }
 

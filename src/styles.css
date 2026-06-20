@@ -601,29 +601,51 @@ input:focus {
   background: #0f172a;
 }
 
-.meeting-livekit-layout .lk-button,
-.meeting-livekit-layout button.lk-button {
+.meeting-control-button,
+.meeting-livekit-layout button.meeting-control-button {
   min-height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   background: #1d293d;
   color: #f8fafc;
+  font-weight: 800;
   opacity: 1;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.meeting-livekit-layout .lk-button:hover,
-.meeting-livekit-layout button.lk-button:hover {
+.meeting-control-button svg,
+.meeting-livekit-layout button.meeting-control-button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: block;
+}
+
+.meeting-control-button span,
+.meeting-livekit-layout button.meeting-control-button span {
+  display: inline-block;
+  line-height: 1;
+}
+
+.meeting-control-button:hover,
+.meeting-livekit-layout button.meeting-control-button:hover {
   background: #26364f;
 }
 
-.meeting-livekit-layout .lk-button[aria-pressed="true"],
-.meeting-livekit-layout button.lk-button[aria-pressed="true"] {
+.meeting-control-button.is-active,
+.meeting-livekit-layout button.meeting-control-button.is-active {
   background: #155eef;
   color: #fff;
 }
 
-.meeting-livekit-layout .lk-disconnect-button,
-.meeting-livekit-layout button.lk-disconnect-button {
+.meeting-control-danger,
+.meeting-livekit-layout button.meeting-control-danger {
   background: #e11d48;
   color: #fff;
 }
@@ -855,23 +877,36 @@ input:focus {
   .meeting-call-controls {
     padding: 8px;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     overflow: hidden;
   }
 
-  .meeting-livekit-layout .lk-button,
-  .meeting-livekit-layout button.lk-button {
+  .meeting-control-button,
+  .meeting-livekit-layout button.meeting-control-button {
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     width: 100%;
+    flex-direction: column;
     justify-content: center;
-    padding-inline: 8px;
-    font-size: 0.86rem;
+    gap: 4px;
+    padding: 6px 4px;
+    font-size: 0.72rem;
   }
 
-  .meeting-livekit-layout .lk-button span,
-  .meeting-livekit-layout button.lk-button span {
+  .meeting-control-button svg,
+  .meeting-livekit-layout button.meeting-control-button svg {
+    width: 17px;
+    height: 17px;
+    flex-basis: 17px;
+  }
+
+  .meeting-control-button span,
+  .meeting-livekit-layout button.meeting-control-button span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
+    line-height: 1.05;
   }
 
   .mobile-meeting-tabs {
