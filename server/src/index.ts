@@ -166,6 +166,38 @@ app.get('/api/rooms/:slug/chat', (request, response) => {
   });
 });
 
+app.get('/api/rooms/:slug/chat/stream', (request, response) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  response.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  writeServerSentEvent(response, 'snapshot', {
+    messages: store.listChatMessagesForRoom(room.id),
+    blockedIdentityIds: store.listChatBlockedIdentityIds(room.id),
+  });
+
+  const unsubscribe = store.subscribeRoomChat(room.id, (event) => {
+    writeServerSentEvent(response, event.type, event);
+  });
+  const heartbeat = windowlessSetInterval(() => {
+    response.write(': keepalive\n\n');
+  }, 25000);
+
+  request.on('close', () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+    response.end();
+  });
+});
+
 app.post('/api/rooms/:slug/chat', withIdentity(true, async (request, response, identity) => {
   const room = store.findRoomBySlug(request.params.slug);
   if (!room) {
@@ -317,4 +349,13 @@ function readString(value: unknown, fallback: string): string {
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
+}
+
+function writeServerSentEvent(response: Response, event: string, payload: unknown): void {
+  response.write(`event: ${event}\n`);
+  response.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function windowlessSetInterval(callback: () => void, delay: number): NodeJS.Timeout {
+  return setInterval(callback, delay);
 }

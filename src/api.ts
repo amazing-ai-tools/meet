@@ -1,4 +1,4 @@
-import type { ChatAttachment, ChatMessage, JoinResponse, MeetingRoom, Session, Team } from './types';
+import type { ChatAttachment, ChatMessage, ChatStreamEvent, JoinResponse, MeetingRoom, Session, Team } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const SESSION_KEY = 'meetteams.session';
@@ -85,6 +85,29 @@ export async function listRoomChat(slug: string): Promise<{
   return api<{ messages: ChatMessage[]; blockedIdentityIds: string[] }>(`/rooms/${slug}/chat`);
 }
 
+export function subscribeRoomChat(
+  slug: string,
+  onEvent: (event: ChatStreamEvent) => void,
+  onError?: () => void,
+): () => void {
+  const source = new EventSource(createApiUrl(`/rooms/${slug}/chat/stream`));
+
+  source.addEventListener('snapshot', (event) => {
+    onEvent({ type: 'snapshot', payload: JSON.parse(event.data) });
+  });
+  source.addEventListener('message', (event) => {
+    onEvent({ type: 'message', payload: JSON.parse(event.data) });
+  });
+  source.addEventListener('blocked', (event) => {
+    onEvent({ type: 'blocked', payload: JSON.parse(event.data) });
+  });
+  source.onerror = () => {
+    onError?.();
+  };
+
+  return () => source.close();
+}
+
 export async function sendRoomChatMessage(
   slug: string,
   input: { text?: string; attachment?: Omit<ChatAttachment, 'id' | 'kind'> },
@@ -134,7 +157,7 @@ export async function listTeamRooms(teamId: string): Promise<{ rooms: MeetingRoo
 
 async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const session = loadSession();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(createApiUrl(path), {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -149,4 +172,9 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+function createApiUrl(path: string): string {
+  const base = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  return new URL(`${base}${path}`, window.location.origin).toString();
 }

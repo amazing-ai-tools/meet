@@ -73,3 +73,13 @@ export type ChatMessage = {
   attachment?: ChatAttachment;
   createdAt: string;
 };
+
+export type ChatSnapshotEvent = {
+  messages: ChatMessage[];
+  blockedIdentityIds: string[];
+};
+
+export type ChatStreamEvent =
+  | { type: 'snapshot'; payload: ChatSnapshotEvent }
+  | { type: 'message'; payload: { type: 'message'; roomId: string; message: ChatMessage } }
+  | { type: 'blocked'; payload: { type: 'blocked'; roomId: string; blockedIdentityIds: string[] } };

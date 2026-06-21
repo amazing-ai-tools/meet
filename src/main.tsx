@@ -59,6 +59,7 @@ import {
   listRoomChat,
   moderateRoomParticipant,
   sendRoomChatMessage,
+  subscribeRoomChat,
   loadSession,
 } from './api';
 import type { ChatMessage, JoinResponse, MeetingRoom, Session, Team } from './types';
@@ -73,6 +74,7 @@ import { createMeetingUrl } from './meetingLinks';
 import { toggleDesktopPanel, type DesktopMeetingPanel } from './desktopMeetingLayout';
 import { getMeetingFocusAfterChatClick, getUnreadChatCount, type MeetingFocus } from './meetingFocus';
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
+import { mergeRoomChatMessages } from './chatMessages';
 import './styles.css';
 
 declare global {
@@ -722,13 +724,28 @@ function MeetingExperience({
     };
 
     void syncChatCount();
-    const interval = window.setInterval(() => {
-      void syncChatCount();
-    }, 2500);
+    const unsubscribe = subscribeRoomChat(roomSlug, (event) => {
+      if (cancelled) {
+        return;
+      }
+      if (event.type === 'snapshot') {
+        setChatMessageCount(event.payload.messages.length);
+        setLastSeenChatMessageCount((current) => (meetingFocus === 'chat' ? event.payload.messages.length : current));
+      }
+      if (event.type === 'message') {
+        setChatMessageCount((current) => {
+          const nextCount = Math.max(current + 1, 1);
+          setLastSeenChatMessageCount((lastSeen) => (meetingFocus === 'chat' ? nextCount : lastSeen));
+          return nextCount;
+        });
+      }
+    }, () => {
+      // Chat badge is advisory; the visible chat surface reports load errors and reconnects via EventSource.
+    });
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      unsubscribe();
     };
   }, [meetingFocus, roomSlug]);
 
@@ -1017,10 +1034,30 @@ function MeetingChat({
 
   React.useEffect(() => {
     loadChat().catch((err: Error) => setStatus(err.message));
-    const interval = window.setInterval(() => {
-      loadChat().catch(() => undefined);
-    }, 2500);
-    return () => window.clearInterval(interval);
+    const unsubscribe = subscribeRoomChat(roomSlug, (event) => {
+      if (event.type === 'snapshot') {
+        setStatus('');
+        setMessages(event.payload.messages);
+        setBlockedIdentityIds(event.payload.blockedIdentityIds);
+        onMessageCountChange?.(event.payload.messages.length);
+        return;
+      }
+      if (event.type === 'message') {
+        setStatus('');
+        setMessages((current) => {
+          const nextMessages = mergeRoomChatMessages(current, [event.payload.message]);
+          onMessageCountChange?.(nextMessages.length);
+          return nextMessages;
+        });
+        return;
+      }
+      if (event.type === 'blocked') {
+        setBlockedIdentityIds(event.payload.blockedIdentityIds);
+      }
+    }, () => {
+      setStatus((current) => current || 'Reconectando ao chat em tempo real...');
+    });
+    return unsubscribe;
   }, [loadChat]);
 
   const pickAttachment = async (file: File | undefined) => {
@@ -1051,7 +1088,7 @@ function MeetingChat({
     try {
       const { message } = await sendRoomChatMessage(roomSlug, { text, attachment });
       setMessages((current) => {
-        const nextMessages = [...current, message].slice(-200);
+        const nextMessages = mergeRoomChatMessages(current, [message]);
         onMessageCountChange?.(nextMessages.length);
         return nextMessages;
       });

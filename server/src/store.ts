@@ -3,6 +3,10 @@ import { dirname } from 'node:path';
 
 import type { ChatMessage, Identity, MeetingParticipant, MeetingRoom, Team } from './domain.js';
 
+export type RoomChatEvent =
+  | { type: 'message'; roomId: string; message: ChatMessage }
+  | { type: 'blocked'; roomId: string; blockedIdentityIds: string[] };
+
 export type AppState = {
   identities: Identity[];
   rooms: MeetingRoom[];
@@ -23,6 +27,7 @@ const emptyState: AppState = {
 
 export class JsonStore {
   private state: AppState = structuredClone(emptyState);
+  private readonly roomChatListeners = new Map<string, Set<(event: RoomChatEvent) => void>>();
 
   constructor(private readonly filePath: string) {}
 
@@ -82,6 +87,19 @@ export class JsonStore {
     return [...(this.state.chatBlockedIdentityIds[roomId] || [])];
   }
 
+  subscribeRoomChat(roomId: string, listener: (event: RoomChatEvent) => void): () => void {
+    const listeners = this.roomChatListeners.get(roomId) || new Set<(event: RoomChatEvent) => void>();
+    listeners.add(listener);
+    this.roomChatListeners.set(roomId, listeners);
+
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        this.roomChatListeners.delete(roomId);
+      }
+    };
+  }
+
   async upsertIdentity(identity: Identity): Promise<Identity> {
     const index = this.state.identities.findIndex((saved) => saved.id === identity.id);
     if (index >= 0) {
@@ -125,6 +143,7 @@ export class JsonStore {
     this.state.chatMessages.push(message);
     this.state.chatMessages = this.state.chatMessages.slice(-1000);
     await this.save();
+    this.emitRoomChatEvent({ type: 'message', roomId: message.roomId, message });
     return message;
   }
 
@@ -139,7 +158,19 @@ export class JsonStore {
     const blockedIds = [...blockedSet];
     this.state.chatBlockedIdentityIds[roomId] = blockedIds;
     await this.save();
+    this.emitRoomChatEvent({ type: 'blocked', roomId, blockedIdentityIds: blockedIds });
     return blockedIds;
+  }
+
+  private emitRoomChatEvent(event: RoomChatEvent): void {
+    const listeners = this.roomChatListeners.get(event.roomId);
+    if (!listeners) {
+      return;
+    }
+
+    for (const listener of listeners) {
+      listener(event);
+    }
   }
 
   private async save(): Promise<void> {
