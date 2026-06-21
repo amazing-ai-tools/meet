@@ -19,6 +19,7 @@ import {
   Users,
   Video,
   VideoOff,
+  X,
 } from 'lucide-react';
 import {
   Chat,
@@ -63,6 +64,7 @@ import {
 } from './fullscreenStage';
 import { toggleMeetingFullscreen } from './fullscreen';
 import { createMeetingUrl } from './meetingLinks';
+import { toggleDesktopPanel, type DesktopMeetingPanel } from './desktopMeetingLayout';
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import './styles.css';
 
@@ -636,31 +638,19 @@ function MeetingRoomView({
         onError={handleRoomError}
         onMediaDeviceFailure={handleMediaDeviceFailure}
       >
-        <MeetingExperience meetingUrl={meetingUrl} onDeviceError={handleMediaDeviceFailure} />
+        <MeetingExperience meetingUrl={meetingUrl} isHost={isHost} onDeviceError={handleMediaDeviceFailure} />
       </LiveKitRoom>
-
-      <aside className="host-panel">
-        <MeetingShareCard url={meetingUrl} label="Link da reuniao" compact />
-        <h2>Controles de host</h2>
-        <p>{isHost ? 'Voce pode moderar participantes desta sala.' : 'Somente o host pode moderar.'}</p>
-        <button disabled={!isHost}>
-          <Mic size={16} />
-          Mutar participante
-        </button>
-        <button disabled={!isHost}>
-          <LogOut size={16} />
-          Remover participante
-        </button>
-      </aside>
     </section>
   );
 }
 
 function MeetingExperience({
   meetingUrl,
+  isHost,
   onDeviceError,
 }: {
   meetingUrl: string;
+  isHost: boolean;
   onDeviceError: () => void;
 }) {
   const layoutContext = useCreateLayoutContext();
@@ -671,6 +661,7 @@ function MeetingExperience({
   ]);
   const participants = useParticipants();
   const [mobilePanel, setMobilePanel] = React.useState<MobileMeetingPanel>(null);
+  const [desktopPanel, setDesktopPanel] = React.useState<DesktopMeetingPanel>(null);
   const [fullscreenActive, setFullscreenActive] = React.useState(false);
   const [fullscreenFocus, setFullscreenFocus] = React.useState<FullscreenStageFocus>('friends');
 
@@ -693,6 +684,12 @@ function MeetingExperience({
 
   const togglePanel = (panel: Exclude<MobileMeetingPanel, null>) => {
     setMobilePanel((current) => toggleMobilePanel(current, panel));
+  };
+  const toggleDesktopSidePanel = (panel: Exclude<DesktopMeetingPanel, null>) => {
+    setDesktopPanel((current) => toggleDesktopPanel(current, panel));
+  };
+  const closeDesktopSidePanel = () => {
+    setDesktopPanel(null);
   };
   const toggleFullscreen = async () => {
     const element = stageRef.current || document.documentElement;
@@ -717,11 +714,15 @@ function MeetingExperience({
           <RoomAudioRenderer />
           <MeetingVideoStage tracks={tracks} fullscreenActive={fullscreenActive} fullscreenFocus={fullscreenFocus} />
           <MeetingCallControls
+            activeDesktopPanel={desktopPanel}
             fullscreenActive={fullscreenActive}
             fullscreenFocus={fullscreenFocus}
+            isHost={isHost}
             onDeviceError={onDeviceError}
+            onToggleDesktopPanel={toggleDesktopSidePanel}
             onToggleFullscreen={toggleFullscreen}
             onToggleStageFocus={toggleStageFocus}
+            participantCount={participants.length}
           />
           <div className="mobile-meeting-tabs" aria-label="Abrir painel da reuniao">
             <button
@@ -754,11 +755,22 @@ function MeetingExperience({
           </div>
         </div>
 
-        <div className={mobilePanel ? `meeting-side-panel is-${mobilePanel}-open` : 'meeting-side-panel'}>
+        <div
+          className={[
+            'meeting-side-panel',
+            desktopPanel ? `is-desktop-open is-${desktopPanel}-open` : '',
+            mobilePanel ? `is-${mobilePanel}-open` : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
           <section className="participants-panel" aria-label="Participantes da reuniao">
             <div className="panel-title-row">
               <h2>Participantes</h2>
               <span>{participants.length}</span>
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+                <X size={16} />
+              </button>
             </div>
             <ul>
               {participants.map((participant) => (
@@ -775,12 +787,40 @@ function MeetingExperience({
             <div className="panel-title-row">
               <h2>Chat</h2>
               <span>ao vivo</span>
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+                <X size={16} />
+              </button>
             </div>
             <Chat />
           </section>
 
           <section className="share-panel" aria-label="Compartilhar reuniao">
+            <div className="panel-title-row share-title-row">
+              <h2>Link da reuniao</h2>
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+                <X size={16} />
+              </button>
+            </div>
             <MeetingShareCard url={meetingUrl} label="Compartilhar reuniao" compact />
+          </section>
+
+          <section className="host-tools-panel" aria-label="Controles de host">
+            <div className="panel-title-row">
+              <h2>Host</h2>
+              <Shield size={16} />
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+                <X size={16} />
+              </button>
+            </div>
+            <p>{isHost ? 'Voce pode moderar participantes desta sala.' : 'Somente o host pode moderar.'}</p>
+            <button disabled={!isHost}>
+              <Mic size={16} />
+              Mutar participante
+            </button>
+            <button disabled={!isHost}>
+              <LogOut size={16} />
+              Remover participante
+            </button>
           </section>
         </div>
       </div>
@@ -845,17 +885,25 @@ function MeetingVideoStage({
 }
 
 function MeetingCallControls({
+  activeDesktopPanel,
   fullscreenActive,
   fullscreenFocus,
+  isHost,
   onDeviceError,
+  onToggleDesktopPanel,
   onToggleFullscreen,
   onToggleStageFocus,
+  participantCount,
 }: {
+  activeDesktopPanel: DesktopMeetingPanel;
   fullscreenActive: boolean;
   fullscreenFocus: FullscreenStageFocus;
+  isHost: boolean;
   onDeviceError: () => void;
+  onToggleDesktopPanel: (panel: Exclude<DesktopMeetingPanel, null>) => void;
   onToggleFullscreen: () => void;
   onToggleStageFocus: () => void;
+  participantCount: number;
 }) {
   const room = useRoomContext();
   const {
@@ -931,6 +979,36 @@ function MeetingCallControls({
         label="Tela cheia"
         onClick={onToggleFullscreen}
       />
+      <MeetingControlButton
+        active={activeDesktopPanel === 'participants'}
+        badge={participantCount}
+        icon={<Users size={18} />}
+        label="Pessoas"
+        panelAction
+        onClick={() => onToggleDesktopPanel('participants')}
+      />
+      <MeetingControlButton
+        active={activeDesktopPanel === 'chat'}
+        icon={<MessageSquare size={18} />}
+        label="Chat"
+        panelAction
+        onClick={() => onToggleDesktopPanel('chat')}
+      />
+      <MeetingControlButton
+        active={activeDesktopPanel === 'share'}
+        icon={<QrCode size={18} />}
+        label="Link"
+        panelAction
+        onClick={() => onToggleDesktopPanel('share')}
+      />
+      <MeetingControlButton
+        active={activeDesktopPanel === 'host'}
+        disabled={!isHost}
+        icon={<Shield size={18} />}
+        label="Host"
+        panelAction
+        onClick={() => onToggleDesktopPanel('host')}
+      />
       {fullscreenActive ? (
         <MeetingControlButton
           active={fullscreenFocus === 'self'}
@@ -949,27 +1027,38 @@ function MeetingCallControls({
 
 function MeetingControlButton({
   active = false,
+  badge,
   disabled = false,
   icon,
   label,
+  panelAction = false,
   onClick,
 }: {
   active?: boolean;
+  badge?: number;
   disabled?: boolean;
   icon: React.ReactNode;
   label: string;
+  panelAction?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className={active ? 'meeting-control-button is-active' : 'meeting-control-button'}
+      className={[
+        'meeting-control-button',
+        active ? 'is-active' : '',
+        panelAction ? 'is-panel-action' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       disabled={disabled}
       aria-pressed={active}
       onClick={onClick}
     >
       {icon}
       <span>{label}</span>
+      {typeof badge === 'number' ? <strong className="control-badge">{badge}</strong> : null}
     </button>
   );
 }
