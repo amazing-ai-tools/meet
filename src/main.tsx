@@ -71,6 +71,7 @@ import {
 import { toggleMeetingFullscreen } from './fullscreen';
 import { createMeetingUrl } from './meetingLinks';
 import { toggleDesktopPanel, type DesktopMeetingPanel } from './desktopMeetingLayout';
+import { getMeetingFocusAfterChatClick, type MeetingFocus } from './meetingFocus';
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import './styles.css';
 
@@ -683,6 +684,7 @@ function MeetingExperience({
   const participants = useParticipants();
   const [mobilePanel, setMobilePanel] = React.useState<MobileMeetingPanel>(null);
   const [desktopPanel, setDesktopPanel] = React.useState<DesktopMeetingPanel>(null);
+  const [meetingFocus, setMeetingFocus] = React.useState<MeetingFocus>('video');
   const [fullscreenActive, setFullscreenActive] = React.useState(false);
   const [fullscreenFocus, setFullscreenFocus] = React.useState<FullscreenStageFocus>('friends');
 
@@ -709,6 +711,11 @@ function MeetingExperience({
   const toggleDesktopSidePanel = (panel: Exclude<DesktopMeetingPanel, null>) => {
     setDesktopPanel((current) => toggleDesktopPanel(current, panel));
   };
+  const toggleChatFocus = () => {
+    setMeetingFocus((current) => getMeetingFocusAfterChatClick(current));
+    setDesktopPanel(null);
+    setMobilePanel(null);
+  };
   const closeDesktopSidePanel = () => {
     setDesktopPanel(null);
   };
@@ -726,20 +733,31 @@ function MeetingExperience({
       <div
         className={
           fullscreenActive
-            ? `meeting-livekit-layout is-fullscreen is-stage-${fullscreenFocus}`
-            : 'meeting-livekit-layout'
+            ? `meeting-livekit-layout is-fullscreen is-stage-${fullscreenFocus} is-focus-${meetingFocus}`
+            : `meeting-livekit-layout is-focus-${meetingFocus}`
         }
         ref={stageRef}
       >
-        <div className="meeting-video-panel">
+        <div className={meetingFocus === 'chat' ? 'meeting-video-panel is-chat-focus' : 'meeting-video-panel'}>
           <RoomAudioRenderer />
-          <MeetingVideoStage tracks={tracks} fullscreenActive={fullscreenActive} fullscreenFocus={fullscreenFocus} />
+          {meetingFocus === 'chat' ? (
+            <MeetingChatFocus
+              localIdentityId={localIdentityId}
+              onBackToVideo={toggleChatFocus}
+              roomSlug={roomSlug}
+              tracks={tracks}
+            />
+          ) : (
+            <MeetingVideoStage tracks={tracks} fullscreenActive={fullscreenActive} fullscreenFocus={fullscreenFocus} />
+          )}
           <MeetingCallControls
             activeDesktopPanel={desktopPanel}
             fullscreenActive={fullscreenActive}
             fullscreenFocus={fullscreenFocus}
+            meetingFocus={meetingFocus}
             isHost={isHost}
             onDeviceError={onDeviceError}
+            onToggleChatFocus={toggleChatFocus}
             onToggleDesktopPanel={toggleDesktopSidePanel}
             onToggleFullscreen={toggleFullscreen}
             onToggleStageFocus={toggleStageFocus}
@@ -754,15 +772,6 @@ function MeetingExperience({
             >
               <Users size={16} />
               Pessoas
-            </button>
-            <button
-              type="button"
-              className={mobilePanel === 'chat' ? 'active' : ''}
-              aria-expanded={mobilePanel === 'chat'}
-              onClick={() => togglePanel('chat')}
-            >
-              <MessageSquare size={16} />
-              Chat
             </button>
             <button
               type="button"
@@ -807,17 +816,6 @@ function MeetingExperience({
               isHost={isHost}
               localIdentityId={localIdentityId}
             />
-          </section>
-
-          <section className="chat-panel" aria-label="Chat da reuniao">
-            <div className="panel-title-row">
-              <h2>Chat</h2>
-              <span>ao vivo</span>
-              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
-                <X size={16} />
-              </button>
-            </div>
-            <MeetingChat roomSlug={roomSlug} localIdentityId={localIdentityId} />
           </section>
 
           <section className="share-panel" aria-label="Compartilhar reuniao">
@@ -947,7 +945,15 @@ function MeetingParticipantsList({
   );
 }
 
-function MeetingChat({ roomSlug, localIdentityId }: { roomSlug: string; localIdentityId: string }) {
+function MeetingChat({
+  roomSlug,
+  localIdentityId,
+  prominent = false,
+}: {
+  roomSlug: string;
+  localIdentityId: string;
+  prominent?: boolean;
+}) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [blockedIdentityIds, setBlockedIdentityIds] = React.useState<string[]>([]);
   const [text, setText] = React.useState('');
@@ -1018,10 +1024,14 @@ function MeetingChat({ roomSlug, localIdentityId }: { roomSlug: string; localIde
   const blocked = blockedIdentityIds.includes(localIdentityId);
 
   return (
-    <div className="custom-chat">
+    <div className={prominent ? 'custom-chat is-prominent' : 'custom-chat'}>
       <div className="chat-messages" role="log" aria-live="polite">
         {messages.length === 0 ? (
-          <p className="empty-chat">Nenhuma mensagem ainda.</p>
+          <div className="empty-chat">
+            <MessageSquare size={22} />
+            <p>Nenhuma mensagem ainda.</p>
+            <span>Envie texto, imagens ou arquivos para todos na reuniao.</span>
+          </div>
         ) : (
           messages.map((message) => (
             <article
@@ -1062,7 +1072,7 @@ function MeetingChat({ roomSlug, localIdentityId }: { roomSlug: string; localIde
               void sendMessage();
             }
           }}
-          placeholder="Mensagem para a reuniao"
+          placeholder={prominent ? 'Escreva uma mensagem para a reuniao...' : 'Mensagem para a reuniao'}
           disabled={blocked}
         />
         <input
@@ -1072,10 +1082,24 @@ function MeetingChat({ roomSlug, localIdentityId }: { roomSlug: string; localIde
           className="visually-hidden-file"
           onChange={(event) => void pickAttachment(event.target.files?.[0])}
         />
-        <button type="button" className="chat-icon-button" onClick={() => fileInputRef.current?.click()} disabled={blocked}>
+        <button
+          type="button"
+          className="chat-icon-button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={blocked}
+          aria-label="Anexar arquivo"
+          title="Anexar arquivo"
+        >
           <FileText size={17} />
         </button>
-        <button type="button" className="chat-send-button" onClick={sendMessage} disabled={busy || blocked}>
+        <button
+          type="button"
+          className="chat-send-button"
+          onClick={sendMessage}
+          disabled={busy || blocked}
+          aria-label="Enviar mensagem"
+          title="Enviar mensagem"
+        >
           <Send size={17} />
         </button>
       </div>
@@ -1243,12 +1267,63 @@ function MeetingVideoStage({
   );
 }
 
+function MeetingChatFocus({
+  roomSlug,
+  localIdentityId,
+  tracks,
+  onBackToVideo,
+}: {
+  roomSlug: string;
+  localIdentityId: string;
+  tracks: MeetingTrack[];
+  onBackToVideo: () => void;
+}) {
+  const previewTrack =
+    tracks.find((track) => track.participant.isLocal && track.source === Track.Source.Camera) ||
+    tracks.find((track) => track.source === Track.Source.Camera) ||
+    tracks[0];
+
+  return (
+    <section className="meeting-chat-focus" aria-label="Chat em destaque">
+      <div className="chat-focus-main">
+        <div className="chat-focus-header">
+          <div>
+            <p>Chat da reuniao</p>
+            <h2>Conversa ao vivo</h2>
+          </div>
+          <button type="button" className="chat-focus-video-button" onClick={onBackToVideo}>
+            <Video size={17} />
+            Voltar ao video
+          </button>
+        </div>
+        <MeetingChat roomSlug={roomSlug} localIdentityId={localIdentityId} prominent />
+      </div>
+
+      <aside className="chat-video-preview" aria-label="Miniatura do video">
+        <div className="chat-video-preview-head">
+          <span>Video</span>
+          <button type="button" onClick={onBackToVideo}>
+            Ampliar
+          </button>
+        </div>
+        {previewTrack ? (
+          <ParticipantTile trackRef={previewTrack} className="chat-video-preview-tile" />
+        ) : (
+          <div className="chat-video-preview-empty">Sem video ativo</div>
+        )}
+      </aside>
+    </section>
+  );
+}
+
 function MeetingCallControls({
   activeDesktopPanel,
   fullscreenActive,
   fullscreenFocus,
+  meetingFocus,
   isHost,
   onDeviceError,
+  onToggleChatFocus,
   onToggleDesktopPanel,
   onToggleFullscreen,
   onToggleStageFocus,
@@ -1257,8 +1332,10 @@ function MeetingCallControls({
   activeDesktopPanel: DesktopMeetingPanel;
   fullscreenActive: boolean;
   fullscreenFocus: FullscreenStageFocus;
+  meetingFocus: MeetingFocus;
   isHost: boolean;
   onDeviceError: () => void;
+  onToggleChatFocus: () => void;
   onToggleDesktopPanel: (panel: Exclude<DesktopMeetingPanel, null>) => void;
   onToggleFullscreen: () => void;
   onToggleStageFocus: () => void;
@@ -1354,11 +1431,10 @@ function MeetingCallControls({
         onClick={() => onToggleDesktopPanel('participants')}
       />
       <MeetingControlButton
-        active={activeDesktopPanel === 'chat'}
-        icon={<MessageSquare size={18} />}
-        label="Chat"
-        panelAction
-        onClick={() => onToggleDesktopPanel('chat')}
+        active={meetingFocus === 'chat'}
+        icon={meetingFocus === 'chat' ? <Video size={18} /> : <MessageSquare size={18} />}
+        label={meetingFocus === 'chat' ? 'Video' : 'Chat'}
+        onClick={onToggleChatFocus}
       />
       <MeetingControlButton
         active={activeDesktopPanel === 'share'}
