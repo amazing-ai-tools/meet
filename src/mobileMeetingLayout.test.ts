@@ -13,6 +13,7 @@ test('toggleMobilePanel opens one meeting drawer at a time', () => {
   assert.equal(toggleMobilePanel(null, 'chat'), 'chat');
   assert.equal(toggleMobilePanel('chat', 'participants'), 'participants');
   assert.equal(toggleMobilePanel('participants', 'share'), 'share');
+  assert.equal(toggleMobilePanel('share', 'effects'), 'effects');
 });
 
 test('toggleMobilePanel closes the active drawer when tapped again', () => {

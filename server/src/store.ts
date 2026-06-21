@@ -1,13 +1,15 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import type { Identity, MeetingParticipant, MeetingRoom, Team } from './domain.js';
+import type { ChatMessage, Identity, MeetingParticipant, MeetingRoom, Team } from './domain.js';
 
 export type AppState = {
   identities: Identity[];
   rooms: MeetingRoom[];
   teams: Team[];
   participants: MeetingParticipant[];
+  chatMessages: ChatMessage[];
+  chatBlockedIdentityIds: Record<string, string[]>;
 };
 
 const emptyState: AppState = {
@@ -15,6 +17,8 @@ const emptyState: AppState = {
   rooms: [],
   teams: [],
   participants: [],
+  chatMessages: [],
+  chatBlockedIdentityIds: {},
 };
 
 export class JsonStore {
@@ -67,6 +71,17 @@ export class JsonStore {
     return this.state.participants.filter((participant) => participant.roomId === roomId);
   }
 
+  listChatMessagesForRoom(roomId: string): ChatMessage[] {
+    return this.state.chatMessages
+      .filter((message) => message.roomId === roomId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .slice(-200);
+  }
+
+  listChatBlockedIdentityIds(roomId: string): string[] {
+    return [...(this.state.chatBlockedIdentityIds[roomId] || [])];
+  }
+
   async upsertIdentity(identity: Identity): Promise<Identity> {
     const index = this.state.identities.findIndex((saved) => saved.id === identity.id);
     if (index >= 0) {
@@ -104,6 +119,27 @@ export class JsonStore {
 
     await this.save();
     return participant;
+  }
+
+  async addChatMessage(message: ChatMessage): Promise<ChatMessage> {
+    this.state.chatMessages.push(message);
+    this.state.chatMessages = this.state.chatMessages.slice(-1000);
+    await this.save();
+    return message;
+  }
+
+  async setChatBlocked(roomId: string, identityId: string, blocked: boolean): Promise<string[]> {
+    const blockedSet = new Set(this.state.chatBlockedIdentityIds[roomId] || []);
+    if (blocked) {
+      blockedSet.add(identityId);
+    } else {
+      blockedSet.delete(identityId);
+    }
+
+    const blockedIds = [...blockedSet];
+    this.state.chatBlockedIdentityIds[roomId] = blockedIds;
+    await this.save();
+    return blockedIds;
   }
 
   private async save(): Promise<void> {

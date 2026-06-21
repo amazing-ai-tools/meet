@@ -4,6 +4,8 @@ import {
   Building2,
   CalendarClock,
   Copy,
+  FileText,
+  Image as ImageIcon,
   LogOut,
   Maximize2,
   MessageSquare,
@@ -12,6 +14,7 @@ import {
   MonitorUp,
   Plus,
   QrCode,
+  Send,
   Shield,
   Sparkles,
   SwitchCamera,
@@ -19,10 +22,10 @@ import {
   Users,
   Video,
   VideoOff,
+  Wand2,
   X,
 } from 'lucide-react';
 import {
-  Chat,
   DisconnectButton,
   GridLayout,
   LayoutContextProvider,
@@ -53,9 +56,12 @@ import {
   joinRoom,
   listTeamRooms,
   listTeams,
+  listRoomChat,
+  moderateRoomParticipant,
+  sendRoomChatMessage,
   loadSession,
 } from './api';
-import type { JoinResponse, MeetingRoom, Session, Team } from './types';
+import type { ChatMessage, JoinResponse, MeetingRoom, Session, Team } from './types';
 import { getNextFacingMode, getNextVideoDevice } from './cameraDevices';
 import {
   getFullscreenStageToggleLabel,
@@ -638,7 +644,13 @@ function MeetingRoomView({
         onError={handleRoomError}
         onMediaDeviceFailure={handleMediaDeviceFailure}
       >
-        <MeetingExperience meetingUrl={meetingUrl} isHost={isHost} onDeviceError={handleMediaDeviceFailure} />
+        <MeetingExperience
+          meetingUrl={meetingUrl}
+          roomSlug={join.room.slug}
+          localIdentityId={join.identity.id}
+          isHost={isHost}
+          onDeviceError={handleMediaDeviceFailure}
+        />
       </LiveKitRoom>
     </section>
   );
@@ -646,10 +658,14 @@ function MeetingRoomView({
 
 function MeetingExperience({
   meetingUrl,
+  roomSlug,
+  localIdentityId,
   isHost,
   onDeviceError,
 }: {
   meetingUrl: string;
+  roomSlug: string;
+  localIdentityId: string;
   isHost: boolean;
   onDeviceError: () => void;
 }) {
@@ -752,6 +768,15 @@ function MeetingExperience({
               <QrCode size={16} />
               Link
             </button>
+            <button
+              type="button"
+              className={mobilePanel === 'effects' ? 'active' : ''}
+              aria-expanded={mobilePanel === 'effects'}
+              onClick={() => togglePanel('effects')}
+            >
+              <Wand2 size={16} />
+              Efeitos
+            </button>
           </div>
         </div>
 
@@ -772,15 +797,11 @@ function MeetingExperience({
                 <X size={16} />
               </button>
             </div>
-            <ul>
-              {participants.map((participant) => (
-                <li key={participant.identity}>
-                  <span className="participant-dot" />
-                  <span>{participant.name || participant.identity}</span>
-                  {participant.isLocal ? <small>Voce</small> : null}
-                </li>
-              ))}
-            </ul>
+            <MeetingParticipantsList
+              roomSlug={roomSlug}
+              isHost={isHost}
+              localIdentityId={localIdentityId}
+            />
           </section>
 
           <section className="chat-panel" aria-label="Chat da reuniao">
@@ -791,7 +812,7 @@ function MeetingExperience({
                 <X size={16} />
               </button>
             </div>
-            <Chat />
+            <MeetingChat roomSlug={roomSlug} localIdentityId={localIdentityId} />
           </section>
 
           <section className="share-panel" aria-label="Compartilhar reuniao">
@@ -804,6 +825,17 @@ function MeetingExperience({
             <MeetingShareCard url={meetingUrl} label="Compartilhar reuniao" compact />
           </section>
 
+          <section className="effects-panel" aria-label="Efeitos de fundo">
+            <div className="panel-title-row">
+              <h2>Efeitos</h2>
+              <Wand2 size={16} />
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+                <X size={16} />
+              </button>
+            </div>
+            <BackgroundEffectsPanel onDeviceError={onDeviceError} />
+          </section>
+
           <section className="host-tools-panel" aria-label="Controles de host">
             <div className="panel-title-row">
               <h2>Host</h2>
@@ -812,19 +844,341 @@ function MeetingExperience({
                 <X size={16} />
               </button>
             </div>
-            <p>{isHost ? 'Voce pode moderar participantes desta sala.' : 'Somente o host pode moderar.'}</p>
-            <button disabled={!isHost}>
-              <Mic size={16} />
-              Mutar participante
-            </button>
-            <button disabled={!isHost}>
-              <LogOut size={16} />
-              Remover participante
-            </button>
+            <p>
+              {isHost
+                ? 'Use o painel Pessoas para mutar microfones, remover participantes e bloquear o chat.'
+                : 'Somente o host pode moderar.'}
+            </p>
           </section>
         </div>
       </div>
     </LayoutContextProvider>
+  );
+}
+
+function MeetingParticipantsList({
+  roomSlug,
+  isHost,
+  localIdentityId,
+}: {
+  roomSlug: string;
+  isHost: boolean;
+  localIdentityId: string;
+}) {
+  const participants = useParticipants();
+  const [blockedIdentityIds, setBlockedIdentityIds] = React.useState<string[]>([]);
+  const [status, setStatus] = React.useState('');
+
+  React.useEffect(() => {
+    listRoomChat(roomSlug)
+      .then(({ blockedIdentityIds: blocked }) => setBlockedIdentityIds(blocked))
+      .catch(() => setBlockedIdentityIds([]));
+  }, [roomSlug]);
+
+  const moderate = async (
+    action: 'mute' | 'remove' | 'block-chat' | 'unblock-chat',
+    targetIdentityId: string,
+    trackSid?: string,
+  ) => {
+    setStatus('');
+    try {
+      const result = await moderateRoomParticipant(roomSlug, action === 'mute'
+        ? { action, targetIdentityId, trackSid }
+        : { action, targetIdentityId });
+      if (result.blockedIdentityIds) {
+        setBlockedIdentityIds(result.blockedIdentityIds);
+      }
+      setStatus(getModerationStatus(action, result.muted));
+    } catch (err) {
+      setStatus((err as Error).message);
+    }
+  };
+
+  return (
+    <div className="participants-list-shell">
+      <ul className="participants-list">
+        {participants.map((participant) => {
+          const microphonePublication = participant.getTrackPublication(Track.Source.Microphone);
+          const blocked = blockedIdentityIds.includes(participant.identity);
+          const canModerate = isHost && participant.identity !== localIdentityId;
+
+          return (
+            <li key={participant.identity}>
+              <span className="participant-dot" />
+              <span className="participant-name">{participant.name || participant.identity}</span>
+              {participant.isLocal ? <small>Voce</small> : null}
+              {canModerate ? (
+                <div className="participant-actions">
+                  <button
+                    type="button"
+                    title="Mutar microfone"
+                    onClick={() => moderate('mute', participant.identity, microphonePublication?.trackSid)}
+                  >
+                    <MicOff size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    title={blocked ? 'Liberar chat' : 'Bloquear chat'}
+                    onClick={() => moderate(blocked ? 'unblock-chat' : 'block-chat', participant.identity)}
+                  >
+                    <MessageSquare size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-mini"
+                    title="Remover da reuniao"
+                    onClick={() => moderate('remove', participant.identity)}
+                  >
+                    <LogOut size={14} />
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      {status ? <p className="panel-status">{status}</p> : null}
+    </div>
+  );
+}
+
+function MeetingChat({ roomSlug, localIdentityId }: { roomSlug: string; localIdentityId: string }) {
+  const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+  const [blockedIdentityIds, setBlockedIdentityIds] = React.useState<string[]>([]);
+  const [text, setText] = React.useState('');
+  const [attachment, setAttachment] = React.useState<{
+    name: string;
+    type: string;
+    size: number;
+    dataUrl: string;
+  }>();
+  const [status, setStatus] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const loadChat = React.useCallback(async () => {
+    const response = await listRoomChat(roomSlug);
+    setMessages(response.messages);
+    setBlockedIdentityIds(response.blockedIdentityIds);
+  }, [roomSlug]);
+
+  React.useEffect(() => {
+    loadChat().catch((err: Error) => setStatus(err.message));
+    const interval = window.setInterval(() => {
+      loadChat().catch(() => undefined);
+    }, 2500);
+    return () => window.clearInterval(interval);
+  }, [loadChat]);
+
+  const pickAttachment = async (file: File | undefined) => {
+    setStatus('');
+    if (!file) {
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setStatus('Arquivos devem ter no maximo 5 MB.');
+      return;
+    }
+
+    setAttachment({
+      name: file.name,
+      type: file.type || 'application/octet-stream',
+      size: file.size,
+      dataUrl: await readFileAsDataUrl(file),
+    });
+  };
+
+  const sendMessage = async () => {
+    if (!text.trim() && !attachment) {
+      return;
+    }
+
+    setBusy(true);
+    setStatus('');
+    try {
+      const { message } = await sendRoomChatMessage(roomSlug, { text, attachment });
+      setMessages((current) => [...current, message].slice(-200));
+      setText('');
+      setAttachment(undefined);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (err) {
+      setStatus((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const blocked = blockedIdentityIds.includes(localIdentityId);
+
+  return (
+    <div className="custom-chat">
+      <div className="chat-messages" role="log" aria-live="polite">
+        {messages.length === 0 ? (
+          <p className="empty-chat">Nenhuma mensagem ainda.</p>
+        ) : (
+          messages.map((message) => (
+            <article
+              key={message.id}
+              className={message.senderIdentityId === localIdentityId ? 'chat-message is-local' : 'chat-message'}
+            >
+              <header>
+                <strong>{message.senderName}</strong>
+                <time>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+              </header>
+              {message.text ? <p>{message.text}</p> : null}
+              {message.attachment ? <ChatAttachmentView message={message} /> : null}
+            </article>
+          ))
+        )}
+      </div>
+
+      {attachment ? (
+        <div className="attachment-preview">
+          {attachment.type.startsWith('image/') ? <ImageIcon size={16} /> : <FileText size={16} />}
+          <span>{attachment.name}</span>
+          <button type="button" onClick={() => setAttachment(undefined)} aria-label="Remover anexo">
+            <X size={14} />
+          </button>
+        </div>
+      ) : null}
+
+      {status ? <p className="panel-status">{status}</p> : null}
+      {blocked ? <p className="panel-status is-danger">O host bloqueou seu envio no chat.</p> : null}
+
+      <div className="chat-compose">
+        <input
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              void sendMessage();
+            }
+          }}
+          placeholder="Mensagem para a reuniao"
+          disabled={blocked}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf,.txt,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+          className="visually-hidden-file"
+          onChange={(event) => void pickAttachment(event.target.files?.[0])}
+        />
+        <button type="button" className="chat-icon-button" onClick={() => fileInputRef.current?.click()} disabled={blocked}>
+          <FileText size={17} />
+        </button>
+        <button type="button" className="chat-send-button" onClick={sendMessage} disabled={busy || blocked}>
+          <Send size={17} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ChatAttachmentView({ message }: { message: ChatMessage }) {
+  const attachment = message.attachment!;
+  if (attachment.kind === 'image') {
+    return (
+      <a href={attachment.dataUrl} download={attachment.name} className="chat-image-attachment">
+        <img src={attachment.dataUrl} alt={attachment.name} />
+        <span>{attachment.name}</span>
+      </a>
+    );
+  }
+
+  return (
+    <a href={attachment.dataUrl} download={attachment.name} className="chat-file-attachment">
+      <FileText size={17} />
+      <span>{attachment.name}</span>
+    </a>
+  );
+}
+
+function BackgroundEffectsPanel({ onDeviceError }: { onDeviceError: () => void }) {
+  const { localParticipant } = useLocalParticipant();
+  const processorRef = React.useRef<{
+    switchTo: (options:
+      | { mode: 'disabled' }
+      | { mode: 'background-blur'; blurRadius?: number }
+      | { mode: 'virtual-background'; imagePath: string }) => Promise<void>;
+  }>();
+  const [activeEffect, setActiveEffect] = React.useState<'none' | 'blur' | 'brand' | 'custom'>('none');
+  const [status, setStatus] = React.useState('');
+
+  const applyEffect = async (effect: 'none' | 'blur' | 'brand' | 'custom', imagePath?: string) => {
+    setStatus('');
+    try {
+      const publication = await ensureLocalCameraPublication(localParticipant);
+      const videoTrack = publication?.videoTrack;
+      if (!videoTrack) {
+        throw new Error('Ative a camera para aplicar efeitos de fundo.');
+      }
+
+      if (effect === 'none') {
+        if (processorRef.current) {
+          await processorRef.current.switchTo({ mode: 'disabled' });
+        } else if ('stopProcessor' in videoTrack) {
+          await videoTrack.stopProcessor();
+        }
+        setActiveEffect('none');
+        return;
+      }
+
+      const { BackgroundProcessor, supportsBackgroundProcessors } = await import('@livekit/track-processors');
+      if (!supportsBackgroundProcessors()) {
+        throw new Error('Este navegador nao suporta efeitos de fundo.');
+      }
+
+      const options =
+        effect === 'blur'
+          ? { mode: 'background-blur' as const, blurRadius: 12 }
+          : { mode: 'virtual-background' as const, imagePath: imagePath || '/backgrounds/amazing-ai-meet.svg' };
+
+      if (processorRef.current) {
+        await processorRef.current.switchTo(options);
+      } else {
+        const processor = BackgroundProcessor(options);
+        await videoTrack.setProcessor(processor, true);
+        processorRef.current = processor;
+      }
+      setActiveEffect(effect);
+    } catch (err) {
+      onDeviceError();
+      setStatus((err as Error).message);
+    }
+  };
+
+  const uploadBackground = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setStatus('Escolha uma imagem para o fundo.');
+      return;
+    }
+    await applyEffect('custom', await readFileAsDataUrl(file));
+  };
+
+  return (
+    <div className="effects-options">
+      <button type="button" className={activeEffect === 'none' ? 'active' : ''} onClick={() => void applyEffect('none')}>
+        Sem efeito
+      </button>
+      <button type="button" className={activeEffect === 'blur' ? 'active' : ''} onClick={() => void applyEffect('blur')}>
+        Desfocar fundo
+      </button>
+      <button type="button" className={activeEffect === 'brand' ? 'active' : ''} onClick={() => void applyEffect('brand')}>
+        Fundo amazing-ai
+      </button>
+      <label className={activeEffect === 'custom' ? 'active effect-upload' : 'effect-upload'}>
+        Imagem propria
+        <input type="file" accept="image/*" onChange={(event) => void uploadBackground(event.target.files?.[0])} />
+      </label>
+      {status ? <p className="panel-status is-danger">{status}</p> : null}
+    </div>
   );
 }
 
@@ -967,6 +1321,13 @@ function MeetingCallControls({
         onClick={switchCamera}
       />
       <MeetingControlButton
+        active={activeDesktopPanel === 'effects'}
+        icon={<Wand2 size={18} />}
+        label="Efeitos"
+        panelAction
+        onClick={() => onToggleDesktopPanel('effects')}
+      />
+      <MeetingControlButton
         active={isScreenShareEnabled}
         disabled={screenShare.pending}
         icon={<MonitorUp size={18} />}
@@ -1092,6 +1453,39 @@ function MeetingShareCard({ url, label, compact = false }: { url: string; label:
       <CopyLinkButton url={url} />
     </div>
   );
+}
+
+function getModerationStatus(action: 'mute' | 'remove' | 'block-chat' | 'unblock-chat', muted?: boolean): string {
+  if (action === 'mute') {
+    return muted ? 'Microfone do participante mutado.' : 'Participante ainda nao publicou microfone.';
+  }
+  if (action === 'remove') {
+    return 'Participante removido da reuniao.';
+  }
+  if (action === 'block-chat') {
+    return 'Participante bloqueado no chat.';
+  }
+  return 'Participante liberado no chat.';
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Nao foi possivel ler o arquivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function ensureLocalCameraPublication(localParticipant: ReturnType<typeof useLocalParticipant>['localParticipant']) {
+  let publication = localParticipant.getTrackPublication(Track.Source.Camera);
+  if (publication?.videoTrack) {
+    return publication;
+  }
+
+  await localParticipant.setCameraEnabled(true);
+  publication = localParticipant.getTrackPublication(Track.Source.Camera);
+  return publication;
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<App />);

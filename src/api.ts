@@ -1,4 +1,4 @@
-import type { JoinResponse, MeetingRoom, Session, Team } from './types';
+import type { ChatAttachment, ChatMessage, JoinResponse, MeetingRoom, Session, Team } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const SESSION_KEY = 'meetteams.session';
@@ -76,6 +76,38 @@ export async function joinRoom(slug: string, displayName: string): Promise<JoinR
   }
 
   return response;
+}
+
+export async function listRoomChat(slug: string): Promise<{
+  messages: ChatMessage[];
+  blockedIdentityIds: string[];
+}> {
+  return api<{ messages: ChatMessage[]; blockedIdentityIds: string[] }>(`/rooms/${slug}/chat`);
+}
+
+export async function sendRoomChatMessage(
+  slug: string,
+  input: { text?: string; attachment?: Omit<ChatAttachment, 'id' | 'kind'> },
+): Promise<{ message: ChatMessage }> {
+  return api<{ message: ChatMessage }>(`/rooms/${slug}/chat`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function moderateRoomParticipant(
+  slug: string,
+  input:
+    | { action: 'mute'; targetIdentityId: string; trackSid?: string }
+    | { action: 'remove' | 'block-chat' | 'unblock-chat'; targetIdentityId: string },
+): Promise<{ ok: true; action: string; blockedIdentityIds?: string[]; muted?: boolean; trackSid?: string }> {
+  return api<{ ok: true; action: string; blockedIdentityIds?: string[]; muted?: boolean; trackSid?: string }>(
+    `/rooms/${slug}/moderation`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 export async function listTeams(): Promise<{ teams: Team[] }> {

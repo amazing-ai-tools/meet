@@ -1,6 +1,9 @@
 import express, { type Request, type Response } from 'express';
 
 import {
+  canHostControlParticipant,
+  canSendChatMessage,
+  createChatMessage,
   createInstantRoom,
   createParticipant,
   createTeam,
@@ -15,7 +18,13 @@ import {
   verifySession,
   type AuthConfig,
 } from './auth.js';
-import { createLiveKitJoinToken, defaultLiveKitUrl, type LiveKitConfig } from './livekit.js';
+import {
+  createLiveKitJoinToken,
+  defaultLiveKitUrl,
+  muteLiveKitParticipantMicrophone,
+  removeLiveKitParticipant,
+  type LiveKitConfig,
+} from './livekit.js';
 import { JsonStore } from './store.js';
 
 const port = Number(process.env.PORT || 8787);
@@ -36,7 +45,7 @@ const liveKitConfig: LiveKitConfig = {
 const store = new JsonStore(dataPath);
 const app = express();
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '8mb' }));
 app.use((request, response, next) => {
   const origin = request.header('origin');
   if (origin && (origin === publicOrigin || origin.endsWith('.amazing-ai.tools'))) {
@@ -144,6 +153,79 @@ app.post('/api/rooms/:slug/join', withIdentity(false, async (request, response, 
   });
 }));
 
+app.get('/api/rooms/:slug/chat', (request, response) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  response.json({
+    messages: store.listChatMessagesForRoom(room.id),
+    blockedIdentityIds: store.listChatBlockedIdentityIds(room.id),
+  });
+});
+
+app.post('/api/rooms/:slug/chat', withIdentity(true, async (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const blockedIdentityIds = store.listChatBlockedIdentityIds(room.id);
+  if (!canSendChatMessage(room, identity!, blockedIdentityIds)) {
+    response.status(403).json({ error: 'You are blocked from sending chat messages in this room' });
+    return;
+  }
+
+  const message = await store.addChatMessage(createChatMessage(room, identity!, {
+    text: readOptionalString(request.body?.text),
+    attachment: request.body?.attachment,
+  }));
+  response.status(201).json({ message });
+}));
+
+app.post('/api/rooms/:slug/moderation', withIdentity(true, async (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const action = readString(request.body?.action, '');
+  const targetIdentityId = readString(request.body?.targetIdentityId, '');
+  if (!canHostControlParticipant(room, identity!, targetIdentityId)) {
+    response.status(403).json({ error: 'Only the host can moderate other participants' });
+    return;
+  }
+
+  if (action === 'remove') {
+    await removeLiveKitParticipant(liveKitConfig, room.slug, targetIdentityId);
+    response.json({ ok: true, action });
+    return;
+  }
+
+  if (action === 'mute') {
+    const result = await muteLiveKitParticipantMicrophone(
+      liveKitConfig,
+      room.slug,
+      targetIdentityId,
+      readOptionalString(request.body?.trackSid),
+    );
+    response.json({ ok: true, action, ...result });
+    return;
+  }
+
+  if (action === 'block-chat' || action === 'unblock-chat') {
+    const blockedIdentityIds = await store.setChatBlocked(room.id, targetIdentityId, action === 'block-chat');
+    response.json({ ok: true, action, blockedIdentityIds });
+    return;
+  }
+
+  response.status(400).json({ error: 'Unsupported moderation action' });
+}));
+
 app.get('/api/teams', withIdentity(true, (request, response, identity) => {
   response.json({ teams: store.listTeamsForIdentity(identity!.id) });
 }));
@@ -231,4 +313,8 @@ function signInMemoryGuest(identity: Identity): string {
 
 function readString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
 }

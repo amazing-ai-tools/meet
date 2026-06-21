@@ -42,6 +42,39 @@ export type MeetingParticipant = {
   joinedAt: string;
 };
 
+export type ChatAttachmentKind = 'image' | 'file';
+
+export type ChatAttachment = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  kind: ChatAttachmentKind;
+  dataUrl: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  roomId: string;
+  senderIdentityId: string;
+  senderName: string;
+  text: string;
+  attachment?: ChatAttachment;
+  createdAt: string;
+};
+
+export type ChatMessageInput = {
+  text?: string;
+  attachment?: {
+    name: string;
+    type: string;
+    size: number;
+    dataUrl: string;
+  };
+};
+
+const maxAttachmentBytes = 5 * 1024 * 1024;
+
 export function createId(prefix: string): string {
   return `${prefix}_${randomBytes(8).toString('base64url').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10).padEnd(10, '0')}`;
 }
@@ -126,6 +159,33 @@ export function canHostControlParticipant(
   return room.hostIdentityId === actor.id && actor.id !== targetIdentityId;
 }
 
+export function canSendChatMessage(room: MeetingRoom, sender: Identity, blockedIdentityIds: string[]): boolean {
+  return room.hostIdentityId === sender.id || !blockedIdentityIds.includes(sender.id);
+}
+
+export function createChatMessage(
+  room: MeetingRoom,
+  sender: Identity,
+  input: ChatMessageInput,
+): ChatMessage {
+  const text = normalizeOptionalText(input.text);
+  const attachment = input.attachment ? normalizeAttachment(input.attachment) : undefined;
+
+  if (!text && !attachment) {
+    throw new Error('Message text or attachment is required');
+  }
+
+  return {
+    id: createId('chat'),
+    roomId: room.id,
+    senderIdentityId: sender.id,
+    senderName: sender.displayName,
+    text,
+    attachment,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export function normalizeDisplayName(name: string): string {
   const normalized = name.trim().replace(/\s+/g, ' ');
   if (normalized.length < 2) {
@@ -142,6 +202,45 @@ function normalizeRoomTitle(title: string): string {
   }
 
   return normalized.slice(0, 120);
+}
+
+function normalizeOptionalText(text: string | undefined): string {
+  return typeof text === 'string' ? text.trim().replace(/\s+/g, ' ').slice(0, 2000) : '';
+}
+
+function normalizeAttachment(attachment: ChatMessageInput['attachment']): ChatAttachment {
+  if (!attachment) {
+    throw new Error('Attachment is required');
+  }
+
+  if (attachment.size > maxAttachmentBytes) {
+    throw new Error('Attachments must be 5 MB or smaller');
+  }
+
+  if (!attachment.dataUrl.startsWith('data:') || !attachment.dataUrl.includes(';base64,')) {
+    throw new Error('Attachment data must be a base64 data URL');
+  }
+
+  const name = attachment.name
+    .split(/[\\/]/)
+    .pop()
+    ?.trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 140);
+  if (!name) {
+    throw new Error('Attachment name is required');
+  }
+
+  const type = attachment.type.trim().slice(0, 120) || 'application/octet-stream';
+
+  return {
+    id: createId('file'),
+    name,
+    type,
+    size: attachment.size,
+    kind: type.startsWith('image/') ? 'image' : 'file',
+    dataUrl: attachment.dataUrl,
+  };
 }
 
 function createRoomSlug(): string {

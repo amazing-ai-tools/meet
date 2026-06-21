@@ -13,7 +13,8 @@ test('toggleDesktopPanel opens one side panel at a time', () => {
   assert.equal(toggleDesktopPanel(null, 'participants'), 'participants');
   assert.equal(toggleDesktopPanel('participants', 'chat'), 'chat');
   assert.equal(toggleDesktopPanel('chat', 'share'), 'share');
-  assert.equal(toggleDesktopPanel('share', 'host'), 'host');
+  assert.equal(toggleDesktopPanel('share', 'effects'), 'effects');
+  assert.equal(toggleDesktopPanel('effects', 'host'), 'host');
 });
 
 test('toggleDesktopPanel closes the active panel when clicked again', () => {

@@ -2,11 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  createChatMessage,
   createGuestIdentity,
   createInstantRoom,
   createTeam,
   createTeamRoom,
   canHostControlParticipant,
+  canSendChatMessage,
   createId,
 } from '../dist/domain.js';
 import { defaultLiveKitUrl } from '../dist/livekit.js';
@@ -67,4 +69,56 @@ test('host controls are limited to the room host', () => {
 test('default LiveKit URL is the public Caddy websocket endpoint', () => {
   assert.equal(defaultLiveKitUrl, 'wss://livekit.meet.api.amazing-ai.tools');
   assert.doesNotMatch(defaultLiveKitUrl, /localhost|127\.0\.0\.1|^ws:\/\//);
+});
+
+test('chat messages allow text, images, and regular files with safe attachment metadata', () => {
+  const sender = createGuestIdentity('Chat Sender');
+  const room = createInstantRoom(sender, 'Chat Room');
+  const message = createChatMessage(room, sender, {
+    text: 'Segue o arquivo',
+    attachment: {
+      name: '../report final.png',
+      type: 'image/png',
+      size: 2048,
+      dataUrl: 'data:image/png;base64,ZmFrZQ==',
+    },
+  });
+
+  assert.equal(message.roomId, room.id);
+  assert.equal(message.senderIdentityId, sender.id);
+  assert.equal(message.text, 'Segue o arquivo');
+  assert.equal(message.attachment?.name, 'report final.png');
+  assert.equal(message.attachment?.kind, 'image');
+});
+
+test('chat messages reject empty payloads and oversized attachments', () => {
+  const sender = createGuestIdentity('Chat Sender');
+  const room = createInstantRoom(sender, 'Chat Room');
+
+  assert.throws(
+    () => createChatMessage(room, sender, { text: '   ' }),
+    /Message text or attachment is required/,
+  );
+
+  assert.throws(
+    () => createChatMessage(room, sender, {
+      attachment: {
+        name: 'large.pdf',
+        type: 'application/pdf',
+        size: 6 * 1024 * 1024,
+        dataUrl: 'data:application/pdf;base64,ZmFrZQ==',
+      },
+    }),
+    /Attachments must be 5 MB or smaller/,
+  );
+});
+
+test('host can block a participant from sending chat messages', () => {
+  const host = createGuestIdentity('Host');
+  const participant = createGuestIdentity('Participant');
+  const room = createInstantRoom(host, 'Moderated Chat');
+
+  assert.equal(canSendChatMessage(room, participant, []), true);
+  assert.equal(canSendChatMessage(room, participant, [participant.id]), false);
+  assert.equal(canSendChatMessage(room, host, [host.id]), true);
 });

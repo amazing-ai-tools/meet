@@ -54,3 +54,22 @@ export type JoinResponse = {
   livekit: LiveKitJoin;
   sessionToken?: string;
 };
+
+export type ChatAttachment = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  kind: 'image' | 'file';
+  dataUrl: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  roomId: string;
+  senderIdentityId: string;
+  senderName: string;
+  text: string;
+  attachment?: ChatAttachment;
+  createdAt: string;
+};
