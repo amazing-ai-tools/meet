@@ -71,7 +71,7 @@ import {
 import { toggleMeetingFullscreen } from './fullscreen';
 import { createMeetingUrl } from './meetingLinks';
 import { toggleDesktopPanel, type DesktopMeetingPanel } from './desktopMeetingLayout';
-import { getMeetingFocusAfterChatClick, type MeetingFocus } from './meetingFocus';
+import { getMeetingFocusAfterChatClick, getUnreadChatCount, type MeetingFocus } from './meetingFocus';
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import './styles.css';
 
@@ -685,6 +685,8 @@ function MeetingExperience({
   const [mobilePanel, setMobilePanel] = React.useState<MobileMeetingPanel>(null);
   const [desktopPanel, setDesktopPanel] = React.useState<DesktopMeetingPanel>(null);
   const [meetingFocus, setMeetingFocus] = React.useState<MeetingFocus>('video');
+  const [chatMessageCount, setChatMessageCount] = React.useState(0);
+  const [lastSeenChatMessageCount, setLastSeenChatMessageCount] = React.useState(0);
   const [fullscreenActive, setFullscreenActive] = React.useState(false);
   const [fullscreenFocus, setFullscreenFocus] = React.useState<FullscreenStageFocus>('friends');
 
@@ -705,6 +707,31 @@ function MeetingExperience({
     };
   }, []);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    const syncChatCount = async () => {
+      try {
+        const response = await listRoomChat(roomSlug);
+        if (!cancelled) {
+          setChatMessageCount(response.messages.length);
+          setLastSeenChatMessageCount((current) => (meetingFocus === 'chat' ? response.messages.length : current));
+        }
+      } catch {
+        // Chat badge is advisory; the visible chat surface reports load errors.
+      }
+    };
+
+    void syncChatCount();
+    const interval = window.setInterval(() => {
+      void syncChatCount();
+    }, 2500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [meetingFocus, roomSlug]);
+
   const togglePanel = (panel: Exclude<MobileMeetingPanel, null>) => {
     setMobilePanel((current) => toggleMobilePanel(current, panel));
   };
@@ -712,10 +739,20 @@ function MeetingExperience({
     setDesktopPanel((current) => toggleDesktopPanel(current, panel));
   };
   const toggleChatFocus = () => {
-    setMeetingFocus((current) => getMeetingFocusAfterChatClick(current));
+    setMeetingFocus((current) => {
+      const nextFocus = getMeetingFocusAfterChatClick(current);
+      if (nextFocus === 'chat') {
+        setLastSeenChatMessageCount(chatMessageCount);
+      }
+      return nextFocus;
+    });
     setDesktopPanel(null);
     setMobilePanel(null);
   };
+  const handleChatMessageCountChange = React.useCallback((count: number) => {
+    setChatMessageCount(count);
+    setLastSeenChatMessageCount((current) => (meetingFocus === 'chat' ? count : current));
+  }, [meetingFocus]);
   const closeDesktopSidePanel = () => {
     setDesktopPanel(null);
   };
@@ -743,6 +780,7 @@ function MeetingExperience({
           {meetingFocus === 'chat' ? (
             <MeetingChatFocus
               localIdentityId={localIdentityId}
+              onMessageCountChange={handleChatMessageCountChange}
               onBackToVideo={toggleChatFocus}
               roomSlug={roomSlug}
               tracks={tracks}
@@ -762,6 +800,7 @@ function MeetingExperience({
             onToggleFullscreen={toggleFullscreen}
             onToggleStageFocus={toggleStageFocus}
             participantCount={participants.length}
+            unreadChatCount={getUnreadChatCount(meetingFocus, chatMessageCount, lastSeenChatMessageCount)}
           />
           <div className="mobile-meeting-tabs" aria-label="Abrir painel da reuniao">
             <button
@@ -948,10 +987,12 @@ function MeetingParticipantsList({
 function MeetingChat({
   roomSlug,
   localIdentityId,
+  onMessageCountChange,
   prominent = false,
 }: {
   roomSlug: string;
   localIdentityId: string;
+  onMessageCountChange?: (count: number) => void;
   prominent?: boolean;
 }) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
@@ -971,7 +1012,8 @@ function MeetingChat({
     const response = await listRoomChat(roomSlug);
     setMessages(response.messages);
     setBlockedIdentityIds(response.blockedIdentityIds);
-  }, [roomSlug]);
+    onMessageCountChange?.(response.messages.length);
+  }, [onMessageCountChange, roomSlug]);
 
   React.useEffect(() => {
     loadChat().catch((err: Error) => setStatus(err.message));
@@ -1008,7 +1050,11 @@ function MeetingChat({
     setStatus('');
     try {
       const { message } = await sendRoomChatMessage(roomSlug, { text, attachment });
-      setMessages((current) => [...current, message].slice(-200));
+      setMessages((current) => {
+        const nextMessages = [...current, message].slice(-200);
+        onMessageCountChange?.(nextMessages.length);
+        return nextMessages;
+      });
       setText('');
       setAttachment(undefined);
       if (fileInputRef.current) {
@@ -1270,11 +1316,13 @@ function MeetingVideoStage({
 function MeetingChatFocus({
   roomSlug,
   localIdentityId,
+  onMessageCountChange,
   tracks,
   onBackToVideo,
 }: {
   roomSlug: string;
   localIdentityId: string;
+  onMessageCountChange: (count: number) => void;
   tracks: MeetingTrack[];
   onBackToVideo: () => void;
 }) {
@@ -1296,7 +1344,12 @@ function MeetingChatFocus({
             Voltar ao video
           </button>
         </div>
-        <MeetingChat roomSlug={roomSlug} localIdentityId={localIdentityId} prominent />
+        <MeetingChat
+          roomSlug={roomSlug}
+          localIdentityId={localIdentityId}
+          onMessageCountChange={onMessageCountChange}
+          prominent
+        />
       </div>
 
       <aside className="chat-video-preview" aria-label="Miniatura do video">
@@ -1328,6 +1381,7 @@ function MeetingCallControls({
   onToggleFullscreen,
   onToggleStageFocus,
   participantCount,
+  unreadChatCount,
 }: {
   activeDesktopPanel: DesktopMeetingPanel;
   fullscreenActive: boolean;
@@ -1340,6 +1394,7 @@ function MeetingCallControls({
   onToggleFullscreen: () => void;
   onToggleStageFocus: () => void;
   participantCount: number;
+  unreadChatCount: number;
 }) {
   const room = useRoomContext();
   const {
@@ -1432,8 +1487,15 @@ function MeetingCallControls({
       />
       <MeetingControlButton
         active={meetingFocus === 'chat'}
+        badge={unreadChatCount > 0 ? unreadChatCount : undefined}
         icon={meetingFocus === 'chat' ? <Video size={18} /> : <MessageSquare size={18} />}
-        label={meetingFocus === 'chat' ? 'Video' : 'Chat'}
+        label={
+          meetingFocus === 'chat'
+            ? 'Video'
+            : unreadChatCount > 0
+              ? `Chat (${unreadChatCount} novas)`
+              : 'Chat'
+        }
         onClick={onToggleChatFocus}
       />
       <MeetingControlButton
