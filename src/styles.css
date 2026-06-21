@@ -18,6 +18,11 @@ body {
   min-height: 100vh;
 }
 
+body.is-meeting-route #bz-widget-root {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 button,
 input {
   font: inherit;

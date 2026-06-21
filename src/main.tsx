@@ -140,6 +140,11 @@ function App() {
 
   const roomMatch = route.match(/^\/r\/([a-z0-9]+)$/);
 
+  React.useEffect(() => {
+    document.body.classList.toggle('is-meeting-route', Boolean(roomMatch));
+    return () => document.body.classList.remove('is-meeting-route');
+  }, [roomMatch]);
+
   return (
     <main className={roomMatch ? 'product-shell meeting-shell' : 'product-shell'}>
       <Sidebar session={session} onNavigate={navigate} onLogout={logout} />
