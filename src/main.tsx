@@ -1383,7 +1383,7 @@ function MeetingCallControls({
           onClick={onToggleStageFocus}
         />
       ) : null}
-      <DisconnectButton className="meeting-control-button meeting-control-danger">
+      <DisconnectButton className="meeting-control-button meeting-control-danger" aria-label="Sair" title="Sair">
         <LogOut size={18} />
         <span>Sair</span>
       </DisconnectButton>
@@ -1419,7 +1419,9 @@ function MeetingControlButton({
         .filter(Boolean)
         .join(' ')}
       disabled={disabled}
+      aria-label={label}
       aria-pressed={active}
+      title={label}
       onClick={onClick}
     >
       {icon}
