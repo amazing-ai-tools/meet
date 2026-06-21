@@ -42,6 +42,15 @@ input:disabled {
     #f5f7fb;
 }
 
+.product-shell.meeting-shell {
+  grid-template-columns: minmax(0, 1fr);
+  background: #0b1020;
+}
+
+.meeting-shell .side-rail {
+  display: none;
+}
+
 .side-rail {
   min-height: 100vh;
   padding: 22px;
