@@ -101,6 +101,9 @@ export function subscribeRoomChat(
   source.addEventListener('blocked', (event) => {
     onEvent({ type: 'blocked', payload: JSON.parse(event.data) });
   });
+  source.addEventListener('typing', (event) => {
+    onEvent({ type: 'typing', payload: JSON.parse(event.data) });
+  });
   source.onerror = () => {
     onError?.();
   };
@@ -115,6 +118,13 @@ export async function sendRoomChatMessage(
   return api<{ message: ChatMessage }>(`/rooms/${slug}/chat`, {
     method: 'POST',
     body: JSON.stringify(input),
+  });
+}
+
+export async function setRoomChatTyping(slug: string, typing: boolean): Promise<void> {
+  await api<void>(`/rooms/${slug}/chat/typing`, {
+    method: 'POST',
+    body: JSON.stringify({ typing }),
   });
 }
 

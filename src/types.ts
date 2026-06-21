@@ -82,4 +82,14 @@ export type ChatSnapshotEvent = {
 export type ChatStreamEvent =
   | { type: 'snapshot'; payload: ChatSnapshotEvent }
   | { type: 'message'; payload: { type: 'message'; roomId: string; message: ChatMessage } }
-  | { type: 'blocked'; payload: { type: 'blocked'; roomId: string; blockedIdentityIds: string[] } };
+  | { type: 'blocked'; payload: { type: 'blocked'; roomId: string; blockedIdentityIds: string[] } }
+  | {
+      type: 'typing';
+      payload: {
+        type: 'typing';
+        roomId: string;
+        identityId: string;
+        displayName: string;
+        typing: boolean;
+      };
+    };

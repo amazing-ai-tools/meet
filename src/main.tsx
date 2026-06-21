@@ -59,6 +59,7 @@ import {
   listRoomChat,
   moderateRoomParticipant,
   sendRoomChatMessage,
+  setRoomChatTyping,
   subscribeRoomChat,
   loadSession,
 } from './api';
@@ -75,6 +76,7 @@ import { toggleDesktopPanel, type DesktopMeetingPanel } from './desktopMeetingLa
 import { getMeetingFocusAfterChatClick, getUnreadChatCount, type MeetingFocus } from './meetingFocus';
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import { mergeRoomChatMessages } from './chatMessages';
+import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
 import './styles.css';
 
 declare global {
@@ -1023,7 +1025,10 @@ function MeetingChat({
   }>();
   const [status, setStatus] = React.useState('');
   const [busy, setBusy] = React.useState(false);
+  const [typingParticipants, setTypingParticipants] = React.useState<TypingParticipant[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const typingStopTimerRef = React.useRef<number>();
+  const typingActiveRef = React.useRef(false);
 
   const loadChat = React.useCallback(async () => {
     const response = await listRoomChat(roomSlug);
@@ -1054,11 +1059,60 @@ function MeetingChat({
       if (event.type === 'blocked') {
         setBlockedIdentityIds(event.payload.blockedIdentityIds);
       }
+      if (event.type === 'typing') {
+        setTypingParticipants((current) => {
+          const next = current.filter((participant) => participant.identityId !== event.payload.identityId);
+          if (!event.payload.typing) {
+            return next;
+          }
+          return [
+            ...next,
+            {
+              identityId: event.payload.identityId,
+              displayName: event.payload.displayName,
+            },
+          ];
+        });
+      }
     }, () => {
       setStatus((current) => current || 'Reconectando ao chat em tempo real...');
     });
     return unsubscribe;
   }, [loadChat]);
+
+  React.useEffect(() => {
+    return () => {
+      if (typingStopTimerRef.current) {
+        window.clearTimeout(typingStopTimerRef.current);
+      }
+      if (typingActiveRef.current) {
+        void setRoomChatTyping(roomSlug, false);
+      }
+    };
+  }, [roomSlug]);
+
+  const announceTyping = React.useCallback((nextText: string) => {
+    if (typingStopTimerRef.current) {
+      window.clearTimeout(typingStopTimerRef.current);
+    }
+
+    if (nextText.trim()) {
+      if (!typingActiveRef.current) {
+        typingActiveRef.current = true;
+        void setRoomChatTyping(roomSlug, true).catch(() => undefined);
+      }
+      typingStopTimerRef.current = window.setTimeout(() => {
+        typingActiveRef.current = false;
+        void setRoomChatTyping(roomSlug, false).catch(() => undefined);
+      }, 1800);
+      return;
+    }
+
+    if (typingActiveRef.current) {
+      typingActiveRef.current = false;
+      void setRoomChatTyping(roomSlug, false).catch(() => undefined);
+    }
+  }, [roomSlug]);
 
   const pickAttachment = async (file: File | undefined) => {
     setStatus('');
@@ -1093,6 +1147,7 @@ function MeetingChat({
         return nextMessages;
       });
       setText('');
+      announceTyping('');
       setAttachment(undefined);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -1105,6 +1160,8 @@ function MeetingChat({
   };
 
   const blocked = blockedIdentityIds.includes(localIdentityId);
+  const visibleTypingParticipants = getVisibleTypingParticipants(typingParticipants, localIdentityId);
+  const typingSummary = getTypingSummary(visibleTypingParticipants);
 
   return (
     <div className={prominent ? 'custom-chat is-prominent' : 'custom-chat'}>
@@ -1142,13 +1199,17 @@ function MeetingChat({
         </div>
       ) : null}
 
+      {typingSummary ? <p className="typing-indicator">{typingSummary}</p> : null}
       {status ? <p className="panel-status">{status}</p> : null}
       {blocked ? <p className="panel-status is-danger">O host bloqueou seu envio no chat.</p> : null}
 
       <div className="chat-compose">
         <input
           value={text}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            setText(event.target.value);
+            announceTyping(event.target.value);
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();

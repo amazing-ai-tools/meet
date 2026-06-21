@@ -1282,6 +1282,20 @@ input:focus {
   color: #17468d;
 }
 
+.typing-indicator {
+  min-height: 20px;
+  margin: -2px 4px 0;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.custom-chat.is-prominent .typing-indicator {
+  margin: 0 8px;
+  color: #3d5b86;
+  font-size: 0.86rem;
+}
+
 .chat-compose {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

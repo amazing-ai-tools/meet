@@ -5,7 +5,8 @@ import type { ChatMessage, Identity, MeetingParticipant, MeetingRoom, Team } fro
 
 export type RoomChatEvent =
   | { type: 'message'; roomId: string; message: ChatMessage }
-  | { type: 'blocked'; roomId: string; blockedIdentityIds: string[] };
+  | { type: 'blocked'; roomId: string; blockedIdentityIds: string[] }
+  | { type: 'typing'; roomId: string; identityId: string; displayName: string; typing: boolean };
 
 export type AppState = {
   identities: Identity[];
@@ -160,6 +161,16 @@ export class JsonStore {
     await this.save();
     this.emitRoomChatEvent({ type: 'blocked', roomId, blockedIdentityIds: blockedIds });
     return blockedIds;
+  }
+
+  setChatTyping(roomId: string, identityId: string, displayName: string, typing: boolean): void {
+    this.emitRoomChatEvent({
+      type: 'typing',
+      roomId,
+      identityId,
+      displayName,
+      typing,
+    });
   }
 
   private emitRoomChatEvent(event: RoomChatEvent): void {

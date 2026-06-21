@@ -198,6 +198,17 @@ app.get('/api/rooms/:slug/chat/stream', (request, response) => {
   });
 });
 
+app.post('/api/rooms/:slug/chat/typing', withIdentity(true, async (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  store.setChatTyping(room.id, identity!.id, identity!.displayName, Boolean(request.body?.typing));
+  response.status(204).end();
+}));
+
 app.post('/api/rooms/:slug/chat', withIdentity(true, async (request, response, identity) => {
   const room = store.findRoomBySlug(request.params.slug);
   if (!room) {
