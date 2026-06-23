@@ -5,6 +5,7 @@ import {
   createChatMessage,
   createGuestIdentity,
   createInstantRoom,
+  createRoomInvitation,
   createTeam,
   createTeamRoom,
   canHostControlParticipant,
@@ -121,4 +122,36 @@ test('host can block a participant from sending chat messages', () => {
   assert.equal(canSendChatMessage(room, participant, []), true);
   assert.equal(canSendChatMessage(room, participant, [participant.id]), false);
   assert.equal(canSendChatMessage(room, host, [host.id]), true);
+});
+
+test('room invitations normalize email recipients and optional schedule time', () => {
+  const host = createGuestIdentity('Host User');
+  const room = createInstantRoom(host, 'Planning Review');
+  const invitation = createRoomInvitation(room, host, {
+    email: '  FRIEND@Example.COM ',
+    scheduledAt: '2026-07-01T15:30:00.000Z',
+    note: '  Vamos revisar o plano. ',
+  });
+
+  assert.equal(invitation.roomId, room.id);
+  assert.equal(invitation.invitedByIdentityId, host.id);
+  assert.equal(invitation.email, 'friend@example.com');
+  assert.equal(invitation.scheduledAt, '2026-07-01T15:30:00.000Z');
+  assert.equal(invitation.note, 'Vamos revisar o plano.');
+  assert.equal(invitation.deliveryStatus, 'pending');
+});
+
+test('room invitations reject invalid emails and past schedule dates', () => {
+  const host = createGuestIdentity('Host User');
+  const room = createInstantRoom(host, 'Planning Review');
+
+  assert.throws(
+    () => createRoomInvitation(room, host, { email: 'not-an-email' }),
+    /valid email/,
+  );
+
+  assert.throws(
+    () => createRoomInvitation(room, host, { email: 'friend@example.com', scheduledAt: '2020-01-01T00:00:00.000Z' }),
+    /future date/,
+  );
 });

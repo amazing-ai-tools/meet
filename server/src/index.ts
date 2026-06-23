@@ -6,6 +6,7 @@ import {
   createChatMessage,
   createInstantRoom,
   createParticipant,
+  createRoomInvitation,
   createTeam,
   createTeamRoom,
   type Identity,
@@ -25,6 +26,7 @@ import {
   removeLiveKitParticipant,
   type LiveKitConfig,
 } from './livekit.js';
+import { readSmtpConfig, sendInvitationEmail } from './invitations.js';
 import { JsonStore } from './store.js';
 
 const port = Number(process.env.PORT || 8787);
@@ -41,6 +43,7 @@ const liveKitConfig: LiveKitConfig = {
   apiKey: process.env.LIVEKIT_API_KEY || 'devkey',
   apiSecret: process.env.LIVEKIT_API_SECRET || 'secret',
 };
+const smtpConfig = readSmtpConfig();
 
 const store = new JsonStore(dataPath);
 const app = express();
@@ -269,6 +272,73 @@ app.post('/api/rooms/:slug/moderation', withIdentity(true, async (request, respo
   response.status(400).json({ error: 'Unsupported moderation action' });
 }));
 
+app.get('/api/rooms/:slug/invitations', withIdentity(true, (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  if (room.hostIdentityId !== identity!.id) {
+    response.status(403).json({ error: 'Only the host can list invitations' });
+    return;
+  }
+
+  response.json({ invitations: store.listRoomInvitations(room.id) });
+}));
+
+app.post('/api/rooms/:slug/invitations', withIdentity(true, async (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  if (room.hostIdentityId !== identity!.id) {
+    response.status(403).json({ error: 'Only the host can send invitations' });
+    return;
+  }
+
+  const emails = readEmailList(request.body?.emails);
+  if (emails.length === 0) {
+    response.status(400).json({ error: 'At least one email is required' });
+    return;
+  }
+
+  const scheduledAt = readOptionalString(request.body?.scheduledAt);
+  const note = readOptionalString(request.body?.note);
+  const invitations = [];
+  for (const email of emails) {
+    const invitation = await store.addRoomInvitation(createRoomInvitation(room, identity!, {
+      email,
+      scheduledAt,
+      note,
+    }));
+    try {
+      const delivery = await sendInvitationEmail(smtpConfig, {
+        invitation,
+        room,
+        inviter: identity!,
+        roomUrl: `${publicOrigin}/r/${room.slug}`,
+      });
+      invitations.push(delivery === 'sent'
+        ? await store.updateRoomInvitationDelivery(invitation.id, 'sent')
+        : invitation);
+    } catch (error) {
+      invitations.push(await store.updateRoomInvitationDelivery(
+        invitation.id,
+        'failed',
+        (error as Error).message.slice(0, 300),
+      ));
+    }
+  }
+
+  response.status(201).json({
+    invitations,
+    smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM),
+  });
+}));
+
 app.get('/api/teams', withIdentity(true, (request, response, identity) => {
   response.json({ teams: store.listTeamsForIdentity(identity!.id) });
 }));
@@ -360,6 +430,15 @@ function readString(value: unknown, fallback: string): string {
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
+}
+
+function readEmailList(value: unknown): string[] {
+  const raw = Array.isArray(value) ? value.join(',') : typeof value === 'string' ? value : '';
+  return raw
+    .split(/[,\n;]/)
+    .map((email) => email.trim())
+    .filter(Boolean)
+    .slice(0, 20);
 }
 
 function writeServerSentEvent(response: Response, event: string, payload: unknown): void {

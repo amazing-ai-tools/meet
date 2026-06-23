@@ -93,3 +93,15 @@ export type ChatStreamEvent =
         typing: boolean;
       };
     };
+
+export type RoomInvitation = {
+  id: string;
+  roomId: string;
+  invitedByIdentityId: string;
+  email: string;
+  scheduledAt?: string;
+  note?: string;
+  deliveryStatus: 'pending' | 'sent' | 'failed';
+  deliveryError?: string;
+  createdAt: string;
+};

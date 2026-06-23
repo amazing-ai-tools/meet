@@ -1,7 +1,15 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import type { ChatMessage, Identity, MeetingParticipant, MeetingRoom, Team } from './domain.js';
+import type {
+  ChatMessage,
+  Identity,
+  MeetingParticipant,
+  MeetingRoom,
+  RoomInvitation,
+  RoomInvitationDeliveryStatus,
+  Team,
+} from './domain.js';
 
 export type RoomChatEvent =
   | { type: 'message'; roomId: string; message: ChatMessage }
@@ -15,6 +23,7 @@ export type AppState = {
   participants: MeetingParticipant[];
   chatMessages: ChatMessage[];
   chatBlockedIdentityIds: Record<string, string[]>;
+  roomInvitations: RoomInvitation[];
 };
 
 const emptyState: AppState = {
@@ -24,6 +33,7 @@ const emptyState: AppState = {
   participants: [],
   chatMessages: [],
   chatBlockedIdentityIds: {},
+  roomInvitations: [],
 };
 
 export class JsonStore {
@@ -86,6 +96,12 @@ export class JsonStore {
 
   listChatBlockedIdentityIds(roomId: string): string[] {
     return [...(this.state.chatBlockedIdentityIds[roomId] || [])];
+  }
+
+  listRoomInvitations(roomId: string): RoomInvitation[] {
+    return this.state.roomInvitations
+      .filter((invitation) => invitation.roomId === roomId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   subscribeRoomChat(roomId: string, listener: (event: RoomChatEvent) => void): () => void {
@@ -161,6 +177,28 @@ export class JsonStore {
     await this.save();
     this.emitRoomChatEvent({ type: 'blocked', roomId, blockedIdentityIds: blockedIds });
     return blockedIds;
+  }
+
+  async addRoomInvitation(invitation: RoomInvitation): Promise<RoomInvitation> {
+    this.state.roomInvitations.push(invitation);
+    await this.save();
+    return invitation;
+  }
+
+  async updateRoomInvitationDelivery(
+    invitationId: string,
+    deliveryStatus: RoomInvitationDeliveryStatus,
+    deliveryError?: string,
+  ): Promise<RoomInvitation> {
+    const invitation = this.state.roomInvitations.find((saved) => saved.id === invitationId);
+    if (!invitation) {
+      throw new Error('Invitation not found');
+    }
+
+    invitation.deliveryStatus = deliveryStatus;
+    invitation.deliveryError = deliveryError;
+    await this.save();
+    return structuredClone(invitation);
   }
 
   setChatTyping(roomId: string, identityId: string, displayName: string, typing: boolean): void {

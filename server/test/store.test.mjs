@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { createChatMessage, createGuestIdentity, createInstantRoom } from '../dist/domain.js';
+import { createChatMessage, createGuestIdentity, createInstantRoom, createRoomInvitation } from '../dist/domain.js';
 import { JsonStore } from '../dist/store.js';
 
 test('store emits room chat events for new messages and chat block changes', async () => {
@@ -55,6 +55,27 @@ test('store emits room chat typing events without persisting them', async () => 
     { type: 'typing', roomId: room.id, identityId: guest.id, displayName: guest.displayName, typing: false },
   ]);
   assert.deepEqual(store.snapshot().chatMessages, []);
+
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('store persists room invitations and delivery status updates', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'meetteams-store-'));
+  const store = new JsonStore(join(dir, 'state.json'));
+  const host = createGuestIdentity('Host');
+  const room = createInstantRoom(host, 'Invite Room');
+
+  await store.load();
+  await store.addRoom(room);
+
+  const invitation = await store.addRoomInvitation(createRoomInvitation(room, host, {
+    email: 'friend@example.com',
+    scheduledAt: '2026-07-01T15:30:00.000Z',
+  }));
+  const updated = await store.updateRoomInvitationDelivery(invitation.id, 'sent');
+
+  assert.equal(updated.deliveryStatus, 'sent');
+  assert.deepEqual(store.listRoomInvitations(room.id), [updated]);
 
   await rm(dir, { recursive: true, force: true });
 });

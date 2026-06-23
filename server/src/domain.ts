@@ -73,6 +73,26 @@ export type ChatMessageInput = {
   };
 };
 
+export type RoomInvitationDeliveryStatus = 'pending' | 'sent' | 'failed';
+
+export type RoomInvitation = {
+  id: string;
+  roomId: string;
+  invitedByIdentityId: string;
+  email: string;
+  scheduledAt?: string;
+  note?: string;
+  deliveryStatus: RoomInvitationDeliveryStatus;
+  deliveryError?: string;
+  createdAt: string;
+};
+
+export type RoomInvitationInput = {
+  email: string;
+  scheduledAt?: string;
+  note?: string;
+};
+
 const maxAttachmentBytes = 5 * 1024 * 1024;
 
 export function createId(prefix: string): string {
@@ -186,6 +206,23 @@ export function createChatMessage(
   };
 }
 
+export function createRoomInvitation(
+  room: MeetingRoom,
+  invitedBy: Identity,
+  input: RoomInvitationInput,
+): RoomInvitation {
+  return {
+    id: createId('invite'),
+    roomId: room.id,
+    invitedByIdentityId: invitedBy.id,
+    email: normalizeEmail(input.email),
+    scheduledAt: normalizeScheduledAt(input.scheduledAt),
+    note: normalizeOptionalNote(input.note),
+    deliveryStatus: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export function normalizeDisplayName(name: string): string {
   const normalized = name.trim().replace(/\s+/g, ' ');
   if (normalized.length < 2) {
@@ -206,6 +243,37 @@ function normalizeRoomTitle(title: string): string {
 
 function normalizeOptionalText(text: string | undefined): string {
   return typeof text === 'string' ? text.trim().replace(/\s+/g, ' ').slice(0, 2000) : '';
+}
+
+function normalizeOptionalNote(note: string | undefined): string | undefined {
+  const normalized = normalizeOptionalText(note);
+  return normalized || undefined;
+}
+
+function normalizeEmail(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    throw new Error('Invitation requires a valid email');
+  }
+
+  return normalized.slice(0, 254);
+}
+
+function normalizeScheduledAt(scheduledAt: string | undefined): string | undefined {
+  if (!scheduledAt) {
+    return undefined;
+  }
+
+  const date = new Date(scheduledAt);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Invitation schedule must be a valid date');
+  }
+
+  if (date.getTime() <= Date.now()) {
+    throw new Error('Invitation schedule must be a future date');
+  }
+
+  return date.toISOString();
 }
 
 function normalizeAttachment(attachment: ChatMessageInput['attachment']): ChatAttachment {

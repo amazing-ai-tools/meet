@@ -1,4 +1,13 @@
-import type { ChatAttachment, ChatMessage, ChatStreamEvent, JoinResponse, MeetingRoom, Session, Team } from './types';
+import type {
+  ChatAttachment,
+  ChatMessage,
+  ChatStreamEvent,
+  JoinResponse,
+  MeetingRoom,
+  RoomInvitation,
+  Session,
+  Team,
+} from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const SESSION_KEY = 'meetteams.session';
@@ -141,6 +150,20 @@ export async function moderateRoomParticipant(
       body: JSON.stringify(input),
     },
   );
+}
+
+export async function listRoomInvitations(slug: string): Promise<{ invitations: RoomInvitation[] }> {
+  return api<{ invitations: RoomInvitation[] }>(`/rooms/${slug}/invitations`);
+}
+
+export async function sendRoomInvitations(
+  slug: string,
+  input: { emails: string; scheduledAt?: string; note?: string },
+): Promise<{ invitations: RoomInvitation[]; smtpConfigured: boolean }> {
+  return api<{ invitations: RoomInvitation[]; smtpConfigured: boolean }>(`/rooms/${slug}/invitations`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 export async function listTeams(): Promise<{ teams: Team[] }> {

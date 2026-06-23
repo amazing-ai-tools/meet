@@ -53,16 +53,18 @@ import {
   getAppConfig,
   getRoom,
   joinRoom,
+  listRoomInvitations,
   listTeamRooms,
   listTeams,
   listRoomChat,
   moderateRoomParticipant,
   sendRoomChatMessage,
+  sendRoomInvitations,
   setRoomChatTyping,
   subscribeRoomChat,
   loadSession,
 } from './api';
-import type { ChatMessage, JoinResponse, MeetingRoom, Session, Team } from './types';
+import type { ChatMessage, JoinResponse, MeetingRoom, RoomInvitation, Session, Team } from './types';
 import { getNextFacingMode, getNextVideoDevice } from './cameraDevices';
 import {
   getFullscreenStageToggleLabel,
@@ -913,6 +915,7 @@ function MeetingExperience({
               </button>
             </div>
             <MeetingShareCard url={meetingUrl} label="Compartilhar reuniao" compact />
+            <MeetingInviteForm roomSlug={roomSlug} isHost={isHost} />
           </section>
 
           <section className="effects-panel" aria-label="Efeitos de fundo">
@@ -1845,6 +1848,116 @@ function MeetingShareCard({ url, label, compact = false }: { url: string; label:
   );
 }
 
+function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boolean }) {
+  const [emails, setEmails] = React.useState('');
+  const [scheduledAt, setScheduledAt] = React.useState('');
+  const [note, setNote] = React.useState('');
+  const [invitations, setInvitations] = React.useState<RoomInvitation[]>([]);
+  const [status, setStatus] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isHost) {
+      return;
+    }
+
+    listRoomInvitations(roomSlug)
+      .then(({ invitations: saved }) => setInvitations(saved))
+      .catch(() => undefined);
+  }, [isHost, roomSlug]);
+
+  if (!isHost) {
+    return (
+      <div className="invite-card">
+        <div className="invite-card-head">
+          <UserPlus size={17} />
+          <strong>Convites por e-mail</strong>
+        </div>
+        <p>Somente o host pode enviar convites desta sala.</p>
+      </div>
+    );
+  }
+
+  const submit = async () => {
+    if (!emails.trim()) {
+      setStatus('Informe pelo menos um e-mail.');
+      return;
+    }
+
+    setBusy(true);
+    setStatus('');
+    try {
+      const response = await sendRoomInvitations(roomSlug, {
+        emails,
+        scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+        note,
+      });
+      setInvitations(response.invitations);
+      setEmails('');
+      setNote('');
+      setStatus(response.smtpConfigured
+        ? 'Convites enviados.'
+        : 'Convites registrados. Configure SMTP para envio automatico por e-mail.');
+    } catch (err) {
+      setStatus((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="invite-card">
+      <div className="invite-card-head">
+        <UserPlus size={17} />
+        <strong>Enviar convite</strong>
+      </div>
+      <label>
+        E-mails
+        <textarea
+          value={emails}
+          onChange={(event) => setEmails(event.target.value)}
+          placeholder="ana@empresa.com, bruno@empresa.com"
+          rows={3}
+        />
+      </label>
+      <label>
+        Data da agenda
+        <input
+          type="datetime-local"
+          value={scheduledAt}
+          onChange={(event) => setScheduledAt(event.target.value)}
+        />
+      </label>
+      <label>
+        Mensagem
+        <textarea
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="Opcional"
+          rows={2}
+        />
+      </label>
+      <button type="button" className="primary-action invite-submit" onClick={submit} disabled={busy}>
+        <CalendarClock size={16} />
+        {busy ? 'Enviando...' : 'Enviar convites'}
+      </button>
+      {status ? <p className="panel-status">{status}</p> : null}
+      {invitations.length > 0 ? (
+        <ul className="invite-list">
+          {invitations.slice(0, 6).map((invitation) => (
+            <li key={invitation.id}>
+              <span>{invitation.email}</span>
+              <strong className={`invite-status is-${invitation.deliveryStatus}`}>
+                {formatInvitationStatus(invitation)}
+              </strong>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function getModerationStatus(action: 'mute' | 'remove' | 'block-chat' | 'unblock-chat', muted?: boolean): string {
   if (action === 'mute') {
     return muted ? 'Microfone do participante mutado.' : 'Participante ainda nao publicou microfone.';
@@ -1856,6 +1969,16 @@ function getModerationStatus(action: 'mute' | 'remove' | 'block-chat' | 'unblock
     return 'Participante bloqueado no chat.';
   }
   return 'Participante liberado no chat.';
+}
+
+function formatInvitationStatus(invitation: RoomInvitation): string {
+  if (invitation.deliveryStatus === 'sent') {
+    return 'enviado';
+  }
+  if (invitation.deliveryStatus === 'failed') {
+    return 'falhou';
+  }
+  return 'pendente';
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
