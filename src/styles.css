@@ -838,6 +838,35 @@ input:focus {
   text-align: center;
 }
 
+.chat-preview-strip {
+  min-width: 0;
+  max-height: 164px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(94px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.chat-preview-selector-tile,
+.meeting-livekit-layout button.chat-preview-selector-tile {
+  min-height: 68px;
+  height: 68px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.chat-preview-selector-tile .meeting-stage-tile-chip {
+  left: 6px;
+  top: 6px;
+  padding: 3px 6px;
+  font-size: 0.62rem;
+}
+
 .local-camera-preview {
   position: absolute;
   right: 18px;
@@ -1638,6 +1667,28 @@ input:focus {
   .chat-video-preview-empty {
     min-height: 90px;
     font-size: 0.72rem;
+  }
+
+  .chat-preview-strip {
+    max-height: 92px;
+    padding: 5px;
+    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+    gap: 5px;
+    border-radius: 10px;
+  }
+
+  .chat-preview-selector-tile,
+  .meeting-livekit-layout button.chat-preview-selector-tile {
+    min-height: 48px;
+    height: 48px;
+    border-radius: 8px;
+  }
+
+  .chat-preview-selector-tile .meeting-stage-tile-chip {
+    left: 4px;
+    top: 4px;
+    padding: 2px 5px;
+    font-size: 0.56rem;
   }
 
   .custom-chat.is-prominent .chat-messages {

@@ -7,6 +7,12 @@ export type StageSpotlightTrackInfo = {
   publicationTrackSid?: string;
 };
 
+export type ChatPreviewSpotlightTrack = {
+  key: StageSpotlightKey;
+  isLocal?: boolean;
+  source: string;
+};
+
 export function getStageSpotlightKey(track: StageSpotlightTrackInfo): StageSpotlightKey {
   const participantKey = track.participantIdentity || (track.isLocal ? 'local' : 'unknown');
   return [participantKey, track.source].join(':');
@@ -17,6 +23,22 @@ export function getStageSpotlightSelectionAfterClick(
   clicked: StageSpotlightKey,
 ): StageSpotlightKey | null {
   return current === clicked ? null : clicked;
+}
+
+export function getChatPreviewSpotlightKey(
+  tracks: ChatPreviewSpotlightTrack[],
+  selected: StageSpotlightKey | null,
+): StageSpotlightKey | null {
+  if (selected && tracks.some((track) => track.key === selected)) {
+    return selected;
+  }
+
+  return (
+    tracks.find((track) => track.isLocal && track.source === 'camera')?.key ||
+    tracks.find((track) => track.source === 'camera')?.key ||
+    tracks[0]?.key ||
+    null
+  );
 }
 
 export function getSpotlightAriaLabel({

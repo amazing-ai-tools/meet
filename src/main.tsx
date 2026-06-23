@@ -77,6 +77,7 @@ import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayou
 import { mergeRoomChatMessages } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
 import {
+  getChatPreviewSpotlightKey,
   getSpotlightAriaLabel,
   getStageSpotlightKey,
   getStageSpotlightSelectionAfterClick,
@@ -796,6 +797,9 @@ function MeetingExperience({
       await toggleFullscreen();
     }
   };
+  const selectChatPreviewSpotlight = (key: StageSpotlightKey) => {
+    setSpotlightKey(key);
+  };
   const toggleStageFocus = () => {
     setSpotlightKey(null);
     setFullscreenFocus((current) => toggleFullscreenStageFocus(current));
@@ -818,7 +822,9 @@ function MeetingExperience({
               localIdentityId={localIdentityId}
               onMessageCountChange={handleChatMessageCountChange}
               onBackToVideo={toggleChatFocus}
+              onSelectSpotlight={selectChatPreviewSpotlight}
               roomSlug={roomSlug}
+              selectedSpotlightKey={spotlightKey}
               tracks={tracks}
             />
           ) : (
@@ -1490,25 +1496,28 @@ function getMeetingTrackLabel(track: MeetingTrack): string {
 function MeetingStageTile({
   track,
   selected,
+  ariaLabel,
   tileClassName = '',
   onToggleSpotlight,
 }: {
   track: MeetingTrack;
   selected: boolean;
+  ariaLabel?: string;
   tileClassName?: string;
   onToggleSpotlight: (key: StageSpotlightKey) => void | Promise<void>;
 }) {
   const participantName = getMeetingTrackLabel(track);
   const spotlightKey = getMeetingTrackSpotlightKey(track);
   const sourceLabel = track.source === Track.Source.ScreenShare ? 'Tela' : 'Camera';
+  const buttonLabel = ariaLabel || getSpotlightAriaLabel({ participantName, source: track.source });
 
   return (
     <button
       type="button"
       className={['meeting-stage-tile-button', selected ? 'is-selected' : '', tileClassName].filter(Boolean).join(' ')}
-      aria-label={getSpotlightAriaLabel({ participantName, source: track.source })}
+      aria-label={buttonLabel}
       aria-pressed={selected}
-      title={getSpotlightAriaLabel({ participantName, source: track.source })}
+      title={buttonLabel}
       onClick={() => void onToggleSpotlight(spotlightKey)}
     >
       <ParticipantTile trackRef={track} className="meeting-stage-participant-tile" />
@@ -1523,17 +1532,29 @@ function MeetingChatFocus({
   onMessageCountChange,
   tracks,
   onBackToVideo,
+  onSelectSpotlight,
+  selectedSpotlightKey,
 }: {
   roomSlug: string;
   localIdentityId: string;
   onMessageCountChange: (count: number) => void;
   tracks: MeetingTrack[];
   onBackToVideo: () => void;
+  onSelectSpotlight: (key: StageSpotlightKey) => void;
+  selectedSpotlightKey: StageSpotlightKey | null;
 }) {
-  const previewTrack =
-    tracks.find((track) => track.participant.isLocal && track.source === Track.Source.Camera) ||
-    tracks.find((track) => track.source === Track.Source.Camera) ||
-    tracks[0];
+  const previewSpotlightKey = getChatPreviewSpotlightKey(
+    tracks.map((track) => ({
+      key: getMeetingTrackSpotlightKey(track),
+      isLocal: track.participant.isLocal,
+      source: track.source,
+    })),
+    selectedSpotlightKey,
+  );
+  const previewTrack = previewSpotlightKey
+    ? tracks.find((track) => getMeetingTrackSpotlightKey(track) === previewSpotlightKey)
+    : undefined;
+  const previewTrackLabel = previewTrack ? getMeetingTrackLabel(previewTrack) : 'Video';
 
   return (
     <section className="meeting-chat-focus" aria-label="Chat em destaque">
@@ -1558,7 +1579,7 @@ function MeetingChatFocus({
 
       <aside className="chat-video-preview" aria-label="Miniatura do video">
         <div className="chat-video-preview-head">
-          <span>Video</span>
+          <span>{previewTrackLabel}</span>
           <button type="button" onClick={onBackToVideo}>
             Ampliar
           </button>
@@ -1568,6 +1589,26 @@ function MeetingChatFocus({
         ) : (
           <div className="chat-video-preview-empty">Sem video ativo</div>
         )}
+        {tracks.length > 1 ? (
+          <div className="chat-preview-strip" aria-label="Escolher video exibido no chat">
+            {tracks.map((track) => {
+              const key = getMeetingTrackSpotlightKey(track);
+              const participantName = getMeetingTrackLabel(track);
+              const mediaLabel = track.source === Track.Source.ScreenShare ? 'tela' : 'camera';
+
+              return (
+                <MeetingStageTile
+                  key={key}
+                  track={track}
+                  selected={key === previewSpotlightKey}
+                  ariaLabel={`Mostrar ${mediaLabel} de ${participantName} no chat`}
+                  onToggleSpotlight={onSelectSpotlight}
+                  tileClassName="chat-preview-selector-tile"
+                />
+              );
+            })}
+          </div>
+        ) : null}
       </aside>
     </section>
   );

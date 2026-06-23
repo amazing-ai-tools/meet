@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  getChatPreviewSpotlightKey,
   getSpotlightAriaLabel,
   getStageSpotlightKey,
   getStageSpotlightSelectionAfterClick,
@@ -55,5 +56,39 @@ test('getSpotlightAriaLabel names cameras and shared screens clearly', () => {
   assert.equal(
     getSpotlightAriaLabel({ participantName: 'Bob', source: 'screen_share' }),
     'Destacar tela compartilhada de Bob em tela cheia',
+  );
+});
+
+test('getChatPreviewSpotlightKey keeps the selected screen or camera when chat is focused', () => {
+  const tracks = [
+    { key: 'alice:camera', isLocal: true, source: 'camera' },
+    { key: 'bob:camera', isLocal: false, source: 'camera' },
+    { key: 'bob:screen_share', isLocal: false, source: 'screen_share' },
+  ];
+
+  assert.equal(getChatPreviewSpotlightKey(tracks, 'bob:screen_share'), 'bob:screen_share');
+  assert.equal(getChatPreviewSpotlightKey(tracks, 'bob:camera'), 'bob:camera');
+});
+
+test('getChatPreviewSpotlightKey falls back to local camera, then any camera, then first track', () => {
+  assert.equal(
+    getChatPreviewSpotlightKey([
+      { key: 'alice:camera', isLocal: true, source: 'camera' },
+      { key: 'bob:screen_share', isLocal: false, source: 'screen_share' },
+    ], null),
+    'alice:camera',
+  );
+
+  assert.equal(
+    getChatPreviewSpotlightKey([
+      { key: 'bob:camera', isLocal: false, source: 'camera' },
+      { key: 'bob:screen_share', isLocal: false, source: 'screen_share' },
+    ], null),
+    'bob:camera',
+  );
+
+  assert.equal(
+    getChatPreviewSpotlightKey([{ key: 'bob:screen_share', isLocal: false, source: 'screen_share' }], null),
+    'bob:screen_share',
   );
 });
