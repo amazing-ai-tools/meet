@@ -36,6 +36,17 @@ test('getStageSpotlightSelectionAfterClick toggles the clicked tile focus', () =
   assert.equal(getStageSpotlightSelectionAfterClick('alice:camera', 'alice:camera'), null);
 });
 
+test('getStageSpotlightKey keeps the local tile stable before identity metadata arrives', () => {
+  assert.equal(
+    getStageSpotlightKey({
+      participantIdentity: '',
+      isLocal: true,
+      source: 'camera',
+    }),
+    'local:camera',
+  );
+});
+
 test('getSpotlightAriaLabel names cameras and shared screens clearly', () => {
   assert.equal(
     getSpotlightAriaLabel({ participantName: 'Alice', source: 'camera' }),

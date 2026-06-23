@@ -1477,6 +1477,7 @@ function MeetingVideoStage({
 function getMeetingTrackSpotlightKey(track: MeetingTrack): StageSpotlightKey {
   return getStageSpotlightKey({
     participantIdentity: track.participant.identity,
+    isLocal: track.participant.isLocal,
     source: track.source,
     publicationTrackSid: track.publication?.trackSid,
   });

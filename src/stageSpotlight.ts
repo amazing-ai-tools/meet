@@ -2,12 +2,14 @@ export type StageSpotlightKey = string;
 
 export type StageSpotlightTrackInfo = {
   participantIdentity: string;
+  isLocal?: boolean;
   source: string;
   publicationTrackSid?: string;
 };
 
 export function getStageSpotlightKey(track: StageSpotlightTrackInfo): StageSpotlightKey {
-  return [track.participantIdentity, track.source].join(':');
+  const participantKey = track.participantIdentity || (track.isLocal ? 'local' : 'unknown');
+  return [participantKey, track.source].join(':');
 }
 
 export function getStageSpotlightSelectionAfterClick(
