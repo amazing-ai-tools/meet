@@ -613,14 +613,66 @@ input:focus {
   z-index: 1;
   min-height: 0;
   padding: 18px 18px 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-rows: minmax(220px, 1fr);
+  gap: 12px;
+}
+
+.meeting-stage-tile-button,
+.meeting-livekit-layout button.meeting-stage-tile-button {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  display: block;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: #0f172a;
+  color: #fff;
+  cursor: zoom-in;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+}
+
+.meeting-stage-tile-button:hover,
+.meeting-livekit-layout button.meeting-stage-tile-button:hover,
+.meeting-stage-tile-button:focus-visible,
+.meeting-livekit-layout button.meeting-stage-tile-button:focus-visible {
+  border-color: rgba(96, 165, 250, 0.82);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22), 0 18px 45px rgba(0, 0, 0, 0.28);
+  outline: none;
+}
+
+.meeting-stage-tile-button.is-selected,
+.meeting-livekit-layout button.meeting-stage-tile-button.is-selected {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 18px 45px rgba(0, 0, 0, 0.3);
+}
+
+.meeting-stage-participant-tile,
+.meeting-stage-tile-button .lk-participant-tile {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
   pointer-events: none;
 }
 
-.meeting-video-grid .lk-participant-tile {
-  border-radius: 18px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+.meeting-stage-tile-chip {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  backdrop-filter: blur(10px);
 }
 
 .fullscreen-stage {
@@ -630,7 +682,7 @@ input:focus {
   height: 100%;
   padding: 12px;
   background: #050914;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .fullscreen-stage-grid {
@@ -655,6 +707,7 @@ input:focus {
 .fullscreen-stage-tile {
   min-height: 0;
   height: 100%;
+  cursor: zoom-out;
 }
 
 .fullscreen-stage-empty {
@@ -810,6 +863,41 @@ input:focus {
   font-size: 0.76rem;
   font-weight: 900;
   text-align: center;
+}
+
+.stage-thumbnail-strip {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 14;
+  width: min(720px, calc(100% - 36px));
+  max-height: 118px;
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(5, 9, 20, 0.78);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%);
+  backdrop-filter: blur(14px);
+}
+
+.stage-thumbnail-tile,
+.meeting-livekit-layout button.stage-thumbnail-tile {
+  flex: 0 0 132px;
+  width: 132px;
+  height: 86px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.stage-thumbnail-tile .meeting-stage-tile-chip {
+  left: 6px;
+  top: 6px;
+  padding: 3px 6px;
+  font-size: 0.64rem;
 }
 
 .meeting-call-controls {

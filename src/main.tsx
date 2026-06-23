@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import {
   DisconnectButton,
-  GridLayout,
   LayoutContextProvider,
   LiveKitRoom,
   ParticipantTile,
@@ -77,6 +76,12 @@ import { getMeetingFocusAfterChatClick, getUnreadChatCount, type MeetingFocus } 
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import { mergeRoomChatMessages } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
+import {
+  getSpotlightAriaLabel,
+  getStageSpotlightKey,
+  getStageSpotlightSelectionAfterClick,
+  type StageSpotlightKey,
+} from './stageSpotlight';
 import './styles.css';
 
 declare global {
@@ -693,6 +698,7 @@ function MeetingExperience({
   const [lastSeenChatMessageCount, setLastSeenChatMessageCount] = React.useState(0);
   const [fullscreenActive, setFullscreenActive] = React.useState(false);
   const [fullscreenFocus, setFullscreenFocus] = React.useState<FullscreenStageFocus>('friends');
+  const [spotlightKey, setSpotlightKey] = React.useState<StageSpotlightKey | null>(null);
 
   React.useEffect(() => {
     const updateFullscreenState = () => {
@@ -701,6 +707,7 @@ function MeetingExperience({
       setFullscreenActive(isActive);
       if (!isActive) {
         setFullscreenFocus('friends');
+        setSpotlightKey(null);
       }
     };
     document.addEventListener('fullscreenchange', updateFullscreenState);
@@ -780,7 +787,17 @@ function MeetingExperience({
     const entered = await toggleMeetingFullscreen(element);
     setFullscreenActive(entered);
   };
+  const toggleSpotlight = async (key: StageSpotlightKey) => {
+    setMeetingFocus('video');
+    setDesktopPanel(null);
+    setMobilePanel(null);
+    setSpotlightKey((current) => getStageSpotlightSelectionAfterClick(current, key));
+    if (!fullscreenActive) {
+      await toggleFullscreen();
+    }
+  };
   const toggleStageFocus = () => {
+    setSpotlightKey(null);
     setFullscreenFocus((current) => toggleFullscreenStageFocus(current));
   };
 
@@ -805,7 +822,13 @@ function MeetingExperience({
               tracks={tracks}
             />
           ) : (
-            <MeetingVideoStage tracks={tracks} fullscreenActive={fullscreenActive} fullscreenFocus={fullscreenFocus} />
+            <MeetingVideoStage
+              tracks={tracks}
+              fullscreenActive={fullscreenActive}
+              fullscreenFocus={fullscreenFocus}
+              selectedSpotlightKey={spotlightKey}
+              onToggleSpotlight={toggleSpotlight}
+            />
           )}
           <MeetingCallControls
             activeDesktopPanel={desktopPanel}
@@ -1361,16 +1384,31 @@ function MeetingVideoStage({
   tracks,
   fullscreenActive,
   fullscreenFocus,
+  selectedSpotlightKey,
+  onToggleSpotlight,
 }: {
   tracks: MeetingTrack[];
   fullscreenActive: boolean;
   fullscreenFocus: FullscreenStageFocus;
+  selectedSpotlightKey: StageSpotlightKey | null;
+  onToggleSpotlight: (key: StageSpotlightKey) => void | Promise<void>;
 }) {
+  const selectedTrack = selectedSpotlightKey
+    ? tracks.find((track) => getMeetingTrackSpotlightKey(track) === selectedSpotlightKey)
+    : undefined;
+
   if (!fullscreenActive) {
     return (
-      <GridLayout tracks={tracks} className="meeting-video-grid">
-        <ParticipantTile />
-      </GridLayout>
+      <div className="meeting-video-grid" aria-label="Videos da reuniao">
+        {tracks.map((track) => (
+          <MeetingStageTile
+            key={getMeetingTrackSpotlightKey(track)}
+            track={track}
+            selected={getMeetingTrackSpotlightKey(track) === selectedSpotlightKey}
+            onToggleSpotlight={onToggleSpotlight}
+          />
+        ))}
+      </div>
     );
   }
 
@@ -1379,17 +1417,23 @@ function MeetingVideoStage({
     tracks.find((track) => track.participant.isLocal);
   const friendTracks = tracks.filter((track) => !track.participant.isLocal);
   const selfTracks = localCameraTrack ? [localCameraTrack] : [];
-  const primaryTracks = fullscreenFocus === 'self' ? selfTracks : friendTracks;
+  const primaryTracks = selectedTrack ? [selectedTrack] : fullscreenFocus === 'self' ? selfTracks : friendTracks;
+  const showLocalPreview =
+    Boolean(localCameraTrack) &&
+    fullscreenFocus === 'friends' &&
+    (!selectedTrack || !selectedTrack.participant.isLocal || selectedTrack.source === Track.Source.ScreenShare);
 
   return (
     <div className="fullscreen-stage" aria-label="Video em tela cheia">
       <div className={primaryTracks.length > 1 ? 'fullscreen-stage-grid' : 'fullscreen-stage-grid single'}>
         {primaryTracks.length > 0 ? (
           primaryTracks.map((track) => (
-            <ParticipantTile
+            <MeetingStageTile
               key={`${track.participant.identity}-${track.source}`}
-              trackRef={track}
-              className="fullscreen-stage-tile"
+              track={track}
+              selected={getMeetingTrackSpotlightKey(track) === selectedSpotlightKey}
+              onToggleSpotlight={onToggleSpotlight}
+              tileClassName="fullscreen-stage-tile"
             />
           ))
         ) : (
@@ -1401,13 +1445,74 @@ function MeetingVideoStage({
         )}
       </div>
 
-      {fullscreenFocus === 'friends' && localCameraTrack ? (
+      {showLocalPreview && localCameraTrack ? (
         <aside className="local-camera-preview" aria-label="Sua camera">
-          <ParticipantTile trackRef={localCameraTrack} className="local-camera-preview-tile" />
+          <MeetingStageTile
+            track={localCameraTrack}
+            selected={getMeetingTrackSpotlightKey(localCameraTrack) === selectedSpotlightKey}
+            onToggleSpotlight={onToggleSpotlight}
+            tileClassName="local-camera-preview-tile"
+          />
           <span>Voce</span>
         </aside>
       ) : null}
+
+      {tracks.length > 1 ? (
+        <div className="stage-thumbnail-strip" aria-label="Escolher video em destaque">
+          {tracks.map((track) => (
+            <MeetingStageTile
+              key={getMeetingTrackSpotlightKey(track)}
+              track={track}
+              selected={getMeetingTrackSpotlightKey(track) === selectedSpotlightKey}
+              onToggleSpotlight={onToggleSpotlight}
+              tileClassName="stage-thumbnail-tile"
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function getMeetingTrackSpotlightKey(track: MeetingTrack): StageSpotlightKey {
+  return getStageSpotlightKey({
+    participantIdentity: track.participant.identity,
+    source: track.source,
+    publicationTrackSid: track.publication?.trackSid,
+  });
+}
+
+function getMeetingTrackLabel(track: MeetingTrack): string {
+  return track.participant.name || track.participant.identity || 'Participante';
+}
+
+function MeetingStageTile({
+  track,
+  selected,
+  tileClassName = '',
+  onToggleSpotlight,
+}: {
+  track: MeetingTrack;
+  selected: boolean;
+  tileClassName?: string;
+  onToggleSpotlight: (key: StageSpotlightKey) => void | Promise<void>;
+}) {
+  const participantName = getMeetingTrackLabel(track);
+  const spotlightKey = getMeetingTrackSpotlightKey(track);
+  const sourceLabel = track.source === Track.Source.ScreenShare ? 'Tela' : 'Camera';
+
+  return (
+    <button
+      type="button"
+      className={['meeting-stage-tile-button', selected ? 'is-selected' : '', tileClassName].filter(Boolean).join(' ')}
+      aria-label={getSpotlightAriaLabel({ participantName, source: track.source })}
+      aria-pressed={selected}
+      title={getSpotlightAriaLabel({ participantName, source: track.source })}
+      onClick={() => void onToggleSpotlight(spotlightKey)}
+    >
+      <ParticipantTile trackRef={track} className="meeting-stage-participant-tile" />
+      <span className="meeting-stage-tile-chip">{sourceLabel}</span>
+    </button>
   );
 }
 
