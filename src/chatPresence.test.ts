@@ -40,3 +40,17 @@ test('getTypingSummary writes natural Portuguese typing labels', () => {
     'Ana, Bia e mais 1 estao digitando...',
   );
 });
+
+test('getTypingSummary writes English and French typing labels', () => {
+  assert.equal(
+    getTypingSummary([{ identityId: 'ana', displayName: 'Ana' }], 'en'),
+    'Ana is typing...',
+  );
+  assert.equal(
+    getTypingSummary([
+      { identityId: 'ana', displayName: 'Ana' },
+      { identityId: 'bia', displayName: 'Bia' },
+    ], 'fr'),
+    'Ana et Bia ecrivent...',
+  );
+});

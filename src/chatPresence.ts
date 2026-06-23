@@ -3,6 +3,8 @@ export type TypingParticipant = {
   displayName: string;
 };
 
+export type TypingLocale = 'pt' | 'en' | 'fr';
+
 export function getVisibleTypingParticipants(
   participants: TypingParticipant[],
   localIdentityId: string,
@@ -20,9 +22,33 @@ export function getVisibleTypingParticipants(
   return [...byIdentity.values()].slice(0, limit);
 }
 
-export function getTypingSummary(participants: TypingParticipant[]): string {
+export function getTypingSummary(participants: TypingParticipant[], locale: TypingLocale = 'pt'): string {
   if (participants.length === 0) {
     return '';
+  }
+
+  if (locale === 'en') {
+    if (participants.length === 1) {
+      return `${participants[0].displayName} is typing...`;
+    }
+    if (participants.length === 2) {
+      return `${participants[0].displayName} and ${participants[1].displayName} are typing...`;
+    }
+    return `${participants[0].displayName}, ${participants[1].displayName}, and ${
+      participants.length - 2
+    } more are typing...`;
+  }
+
+  if (locale === 'fr') {
+    if (participants.length === 1) {
+      return `${participants[0].displayName} ecrit...`;
+    }
+    if (participants.length === 2) {
+      return `${participants[0].displayName} et ${participants[1].displayName} ecrivent...`;
+    }
+    return `${participants[0].displayName}, ${participants[1].displayName} et ${
+      participants.length - 2
+    } autre(s) ecrivent...`;
   }
 
   if (participants.length === 1) {

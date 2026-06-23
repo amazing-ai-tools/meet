@@ -80,6 +80,7 @@ import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayou
 import { mergeRoomChatMessages } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
 import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
+import { createTranslator, resolveLocale, type AppLocale } from './i18n';
 import {
   getChatPreviewSpotlightKey,
   getSpotlightAriaLabel,
@@ -107,6 +108,18 @@ const appDomain = import.meta.env.VITE_APP_DOMAIN || 'meet.app.amazing-ai.tools'
 const bugzeroAppKey = import.meta.env.VITE_BUGZERO_APP_KEY || '';
 const bugzeroWidgetUrl =
   import.meta.env.VITE_BUGZERO_WIDGET_URL || 'https://bugzero.amazing-ai.tools/widget.js';
+type Translate = ReturnType<typeof createTranslator>;
+const browserLocale = resolveLocale(typeof navigator === 'undefined' ? [] : navigator.languages);
+const I18nContext = React.createContext<Translate>(createTranslator(browserLocale));
+const LocaleContext = React.createContext<AppLocale>(browserLocale);
+
+function useT() {
+  return React.useContext(I18nContext);
+}
+
+function useLocale() {
+  return React.useContext(LocaleContext);
+}
 
 function ensureBugZeroWidget() {
   if (!bugzeroAppKey || document.querySelector('script[data-bugzero-widget]')) {
@@ -125,13 +138,16 @@ function App() {
   const [session, setSession] = React.useState<Session | undefined>(() => loadSession());
   const [route, setRoute] = React.useState(() => window.location.pathname);
   const [googleClientId, setGoogleClientId] = React.useState(() => import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
+  const [locale] = React.useState<AppLocale>(browserLocale);
+  const translate = React.useMemo(() => createTranslator(locale), [locale]);
 
   React.useEffect(() => {
     ensureBugZeroWidget();
+    document.documentElement.lang = locale;
     const onPopState = () => setRoute(window.location.pathname);
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [locale]);
 
   React.useEffect(() => {
     if (googleClientId) {
@@ -161,6 +177,8 @@ function App() {
   }, [roomMatch]);
 
   return (
+    <I18nContext.Provider value={translate}>
+    <LocaleContext.Provider value={locale}>
     <main className={roomMatch ? 'product-shell meeting-shell' : 'product-shell'}>
       <Sidebar session={session} onNavigate={navigate} onLogout={logout} />
       {roomMatch ? (
@@ -180,6 +198,8 @@ function App() {
         />
       )}
     </main>
+    </LocaleContext.Provider>
+    </I18nContext.Provider>
   );
 }
 
@@ -192,25 +212,26 @@ function Sidebar({
   onNavigate: (path: string) => void;
   onLogout: () => void;
 }) {
+  const t = useT();
   return (
     <aside className="side-rail">
-      <button className="brand" onClick={() => onNavigate('/')} aria-label="Ir para inicio">
+      <button className="brand" onClick={() => onNavigate('/')} aria-label={t('nav.home')}>
         <span className="brand-mark">M</span>
         <span>{appName}</span>
       </button>
 
-      <nav className="rail-nav" aria-label="Navegacao principal">
+      <nav className="rail-nav" aria-label={t('nav.home')}>
         <button onClick={() => onNavigate('/')}>
           <Video size={18} />
-          Reunioes
+          {t('nav.meetings')}
         </button>
         <button onClick={() => onNavigate('/')}>
           <Building2 size={18} />
-          Times
+          {t('nav.teams')}
         </button>
         <button onClick={() => onNavigate('/')}>
           <CalendarClock size={18} />
-          Salas
+          {t('nav.rooms')}
         </button>
       </nav>
 
@@ -220,14 +241,14 @@ function Sidebar({
             <span className="avatar">{session.identity.displayName.slice(0, 1).toUpperCase()}</span>
             <div>
               <strong>{session.identity.displayName}</strong>
-              <small>{session.identity.provider === 'google' ? session.identity.email : 'Convidado'}</small>
+              <small>{session.identity.provider === 'google' ? session.identity.email : t('app.guest')}</small>
             </div>
-            <button className="icon-button" onClick={onLogout} aria-label="Sair da sessao">
+            <button className="icon-button" onClick={onLogout} aria-label={t('controls.leave')}>
               <LogOut size={16} />
             </button>
           </>
         ) : (
-          <p>Entre como convidado para reunioes avulsas ou use Google para times.</p>
+          <p>{t('app.signInHint')}</p>
         )}
       </div>
     </aside>
@@ -245,10 +266,11 @@ function Dashboard({
   onSession: (session: Session) => void;
   onNavigate: (path: string) => void;
 }) {
+  const t = useT();
   const [displayName, setDisplayName] = React.useState(session?.identity.displayName || '');
-  const [meetingTitle, setMeetingTitle] = React.useState('Nova reuniao amazing-ai meet');
+  const [meetingTitle, setMeetingTitle] = React.useState(`${t('dashboard.newMeeting')} amazing-ai meet`);
   const [teamName, setTeamName] = React.useState('Produto Amazing');
-  const [roomTitle, setRoomTitle] = React.useState('Sala diaria');
+  const [roomTitle, setRoomTitle] = React.useState(t('dashboard.roomTitle'));
   const [teams, setTeams] = React.useState<Team[]>([]);
   const [rooms, setRooms] = React.useState<MeetingRoom[]>([]);
   const [selectedTeamId, setSelectedTeamId] = React.useState('');
@@ -341,7 +363,7 @@ function Dashboard({
       <header className="topbar">
         <div>
           <h1>{appName}</h1>
-          <p>Reunioes avulsas por link e salas persistentes para times.</p>
+          <p>{t('app.productSummary')}</p>
         </div>
         <GoogleSignIn googleClientId={googleClientId} onSession={onSession} />
       </header>
@@ -352,8 +374,8 @@ function Dashboard({
         <div className="command-copy">
           <Sparkles size={22} />
           <div>
-            <h2>Nova reuniao avulsa</h2>
-            <p>Crie um link publico sem login. Quem recebe o link entra pelo lobby com nome ou Google.</p>
+            <h2>{t('dashboard.instantTitle')}</h2>
+            <p>{t('dashboard.instantDescription')}</p>
           </div>
         </div>
         <div className="command-form">
@@ -361,19 +383,19 @@ function Dashboard({
             <input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Seu nome"
-              aria-label="Seu nome"
+              placeholder={t('dashboard.name')}
+              aria-label={t('dashboard.name')}
             />
           )}
           <input
             value={meetingTitle}
             onChange={(event) => setMeetingTitle(event.target.value)}
-            placeholder="Titulo da reuniao"
-            aria-label="Titulo da reuniao"
+            placeholder={t('dashboard.meetingTitle')}
+            aria-label={t('dashboard.meetingTitle')}
           />
           <button className="primary-action" onClick={startInstantMeeting} disabled={busy}>
             <Plus size={18} />
-            Nova reuniao
+            {t('dashboard.newMeeting')}
           </button>
         </div>
       </section>
@@ -389,7 +411,7 @@ function Dashboard({
           ))}
         </div>
         <div className="preview-panel">
-          <h2>Na sala</h2>
+          <h2>{t('dashboard.previewTitle')}</h2>
           <ul>
             <li><Mic size={16} /> Audio e video via LiveKit self-hosted</li>
             <li><MonitorUp size={16} /> Compartilhamento de tela</li>
@@ -402,22 +424,22 @@ function Dashboard({
       <section className="teams-section">
         <div className="section-head">
           <div>
-            <h2>Times e salas persistentes</h2>
-            <p>Use Google para criar workspaces e manter salas fixas por time.</p>
+            <h2>{t('dashboard.teamsTitle')}</h2>
+            <p>{t('dashboard.teamsDescription')}</p>
           </div>
-          {session?.identity.provider !== 'google' && <span className="login-required">Google necessario</span>}
+          {session?.identity.provider !== 'google' && <span className="login-required">{t('app.googleRequired')}</span>}
         </div>
 
         <div className="team-builder">
           <input
             value={teamName}
             onChange={(event) => setTeamName(event.target.value)}
-            placeholder="Nome do time"
+            placeholder={t('dashboard.teamName')}
             disabled={session?.identity.provider !== 'google'}
           />
           <button onClick={addTeam} disabled={busy || session?.identity.provider !== 'google'}>
             <UserPlus size={17} />
-            Criar time
+            {t('dashboard.createTeam')}
           </button>
         </div>
 
@@ -440,16 +462,16 @@ function Dashboard({
                 <input value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} />
                 <button onClick={addTeamRoom} disabled={busy}>
                   <Plus size={16} />
-                  Sala
+                  {t('dashboard.room')}
                 </button>
               </div>
               {rooms.map((room) => (
                 <article key={room.id}>
                   <div>
                     <h3>{room.title}</h3>
-                    <p>Link persistente: /r/{room.slug}</p>
+                    <p>Link: /r/{room.slug}</p>
                   </div>
-                  <button onClick={() => onNavigate(`/r/${room.slug}`)}>Entrar</button>
+                  <button onClick={() => onNavigate(`/r/${room.slug}`)}>{t('dashboard.join')}</button>
                 </article>
               ))}
             </div>
@@ -467,6 +489,7 @@ function GoogleSignIn({
   googleClientId: string;
   onSession: (session: Session) => void;
 }) {
+  const t = useT();
   const buttonRef = React.useRef<HTMLDivElement>(null);
   const [status, setStatus] = React.useState('');
 
@@ -486,7 +509,7 @@ function GoogleSignIn({
           try {
             const session = await createGoogleSession(credential);
             onSession(session);
-            setStatus('Google conectado');
+            setStatus(t('google.connected'));
           } catch (err) {
             setStatus((err as Error).message);
           }
@@ -499,10 +522,10 @@ function GoogleSignIn({
       });
     };
     document.head.appendChild(script);
-  }, [googleClientId, onSession]);
+  }, [googleClientId, onSession, t]);
 
   if (!googleClientId) {
-    return <span className="google-disabled">Google login aguardando configuracao</span>;
+    return <span className="google-disabled">{t('google.disabled')}</span>;
   }
 
   return (
@@ -526,6 +549,7 @@ function MeetingRoute({
   onSession: (session: Session) => void;
   onNavigate: (path: string) => void;
 }) {
+  const t = useT();
   const [room, setRoom] = React.useState<MeetingRoom | undefined>();
   const [displayName, setDisplayName] = React.useState(session?.identity.displayName || '');
   const [join, setJoin] = React.useState<JoinResponse | undefined>();
@@ -569,8 +593,8 @@ function MeetingRoute({
     <section className="workspace lobby">
       <header className="topbar">
         <div>
-          <h1>{room?.title || 'Carregando reuniao'}</h1>
-          <p>{room?.requiresLogin ? 'Esta sala persistente exige Google.' : 'Reuniao avulsa aberta por link.'}</p>
+          <h1>{room?.title || t('app.loadingMeeting')}</h1>
+          <p>{room?.requiresLogin ? t('lobby.persistentRequiresGoogle') : t('lobby.openByLink')}</p>
         </div>
         <CopyLinkButton url={meetingUrl} />
       </header>
@@ -580,24 +604,24 @@ function MeetingRoute({
       <div className="lobby-card">
         <div className="camera-check">
           <Video size={46} />
-          <p>Camera e microfone serao ativados ao entrar na sala LiveKit.</p>
+          <p>{t('lobby.cameraHint')}</p>
         </div>
         <div className="lobby-form">
-          <h2>Entrar na reuniao</h2>
+          <h2>{t('lobby.enter')}</h2>
           {!session && (
             <input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Seu nome"
-              aria-label="Seu nome para entrar"
+              placeholder={t('dashboard.name')}
+              aria-label={t('dashboard.name')}
             />
           )}
           <GoogleSignIn googleClientId={googleClientId} onSession={onSession} />
           <button className="primary-action" onClick={enterRoom} disabled={busy || (!session && displayName.trim().length < 2)}>
             <Video size={18} />
-            Entrar agora
+            {t('lobby.enterNow')}
           </button>
-          <MeetingShareCard url={meetingUrl} label="Compartilhar sala" />
+          <MeetingShareCard url={meetingUrl} label={t('meeting.shareRoom')} />
         </div>
       </div>
     </section>
@@ -613,18 +637,19 @@ function MeetingRoomView({
   meetingUrl: string;
   onNavigate: (path: string) => void;
 }) {
+  const t = useT();
   const isHost = join.participant.role === 'host';
-  const [connectionStatus, setConnectionStatus] = React.useState('Conectando ao LiveKit...');
+  const [connectionStatus, setConnectionStatus] = React.useState(t('meeting.connecting'));
   const [roomError, setRoomError] = React.useState<string | undefined>();
 
   const handleRoomError = React.useCallback((error: Error) => {
-    setConnectionStatus('Conexao interrompida');
-    setRoomError(error.message || 'Nao foi possivel conectar audio e video.');
-  }, []);
+    setConnectionStatus(t('meeting.interrupted'));
+    setRoomError(error.message || t('meeting.interrupted'));
+  }, [t]);
 
   const handleMediaDeviceFailure = React.useCallback(() => {
-    setRoomError('Permita acesso a camera e microfone no navegador para publicar audio e video.');
-  }, []);
+    setRoomError(t('meeting.mediaPermission'));
+  }, [t]);
 
   return (
     <section className="meeting-stage">
@@ -637,7 +662,7 @@ function MeetingRoomView({
           <CopyLinkButton url={meetingUrl} />
           <button className="leave-button" onClick={() => onNavigate('/')}>
             <LogOut size={17} />
-            Sair
+            {t('controls.leave')}
           </button>
         </div>
       </header>
@@ -657,10 +682,10 @@ function MeetingRoomView({
         className="livekit-shell"
         data-lk-theme="default"
         onConnected={() => {
-          setConnectionStatus('Conectado');
+          setConnectionStatus(t('meeting.connected'));
           setRoomError(undefined);
         }}
-        onDisconnected={() => setConnectionStatus('Desconectado')}
+        onDisconnected={() => setConnectionStatus(t('meeting.disconnected'))}
         onError={handleRoomError}
         onMediaDeviceFailure={handleMediaDeviceFailure}
       >
@@ -689,6 +714,7 @@ function MeetingExperience({
   isHost: boolean;
   onDeviceError: () => void;
 }) {
+  const t = useT();
   const layoutContext = useCreateLayoutContext();
   const stageRef = React.useRef<HTMLDivElement>(null);
   const tracks = useTracks([
@@ -854,7 +880,7 @@ function MeetingExperience({
             participantCount={participants.length}
             unreadChatCount={getUnreadChatCount(meetingFocus, chatMessageCount, lastSeenChatMessageCount)}
           />
-          <div className="mobile-meeting-tabs" aria-label="Abrir painel da reuniao">
+          <div className="mobile-meeting-tabs" aria-label={t('meeting.share')}>
             <button
               type="button"
               className={mobilePanel === 'participants' ? 'active' : ''}
@@ -862,7 +888,7 @@ function MeetingExperience({
               onClick={() => togglePanel('participants')}
             >
               <Users size={16} />
-              Pessoas
+              {t('controls.people')}
             </button>
             <button
               type="button"
@@ -871,7 +897,7 @@ function MeetingExperience({
               onClick={() => togglePanel('share')}
             >
               <QrCode size={16} />
-              Link
+              {t('controls.link')}
             </button>
             <button
               type="button"
@@ -880,7 +906,7 @@ function MeetingExperience({
               onClick={() => togglePanel('effects')}
             >
               <Wand2 size={16} />
-              Efeitos
+              {t('controls.effects')}
             </button>
           </div>
         </div>
@@ -894,11 +920,11 @@ function MeetingExperience({
             .filter(Boolean)
             .join(' ')}
         >
-          <section className="participants-panel" aria-label="Participantes da reuniao">
+          <section className="participants-panel" aria-label={t('controls.people')}>
             <div className="panel-title-row">
-              <h2>Participantes</h2>
+              <h2>{t('controls.people')}</h2>
               <span>{participants.length}</span>
-              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label={t('meeting.panelClose')}>
                 <X size={16} />
               </button>
             </div>
@@ -909,50 +935,50 @@ function MeetingExperience({
             />
           </section>
 
-          <section className="share-panel" aria-label="Compartilhar reuniao">
+          <section className="share-panel" aria-label={t('meeting.share')}>
             <div className="panel-title-row share-title-row">
-              <h2>Link da reuniao</h2>
-              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+              <h2>{t('controls.link')}</h2>
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label={t('meeting.panelClose')}>
                 <X size={16} />
               </button>
             </div>
-            <MeetingShareCard url={meetingUrl} label="Compartilhar reuniao" compact />
+            <MeetingShareCard url={meetingUrl} label={t('meeting.share')} compact />
             <MeetingInviteForm roomSlug={roomSlug} isHost={isHost} />
           </section>
 
-          <section className="devices-panel" aria-label="Dispositivos de audio e video">
+          <section className="devices-panel" aria-label={t('controls.devices')}>
             <div className="panel-title-row">
-              <h2>Dispositivos</h2>
-              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+              <h2>{t('controls.devices')}</h2>
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label={t('meeting.panelClose')}>
                 <X size={16} />
               </button>
             </div>
             <MeetingDeviceSettings onDeviceError={onDeviceError} />
           </section>
 
-          <section className="effects-panel" aria-label="Efeitos de fundo">
+          <section className="effects-panel" aria-label={t('controls.effects')}>
             <div className="panel-title-row">
-              <h2>Efeitos</h2>
+              <h2>{t('controls.effects')}</h2>
               <Wand2 size={16} />
-              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label={t('meeting.panelClose')}>
                 <X size={16} />
               </button>
             </div>
             <BackgroundEffectsPanel onDeviceError={onDeviceError} />
           </section>
 
-          <section className="host-tools-panel" aria-label="Controles de host">
+          <section className="host-tools-panel" aria-label={t('controls.host')}>
             <div className="panel-title-row">
-              <h2>Host</h2>
+              <h2>{t('controls.host')}</h2>
               <Shield size={16} />
-              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label={t('meeting.panelClose')}>
                 <X size={16} />
               </button>
             </div>
             <p>
               {isHost
-                ? 'Use o painel Pessoas para mutar microfones, remover participantes e bloquear o chat.'
-                : 'Somente o host pode moderar.'}
+                ? t('moderation.hostHint')
+                : t('moderation.hostOnly')}
             </p>
           </section>
         </div>
@@ -970,6 +996,7 @@ function MeetingParticipantsList({
   isHost: boolean;
   localIdentityId: string;
 }) {
+  const t = useT();
   const participants = useParticipants();
   const [blockedIdentityIds, setBlockedIdentityIds] = React.useState<string[]>([]);
   const [status, setStatus] = React.useState('');
@@ -993,7 +1020,7 @@ function MeetingParticipantsList({
       if (result.blockedIdentityIds) {
         setBlockedIdentityIds(result.blockedIdentityIds);
       }
-      setStatus(getModerationStatus(action, result.muted));
+      setStatus(getModerationStatus(t, action, result.muted));
     } catch (err) {
       setStatus((err as Error).message);
     }
@@ -1011,19 +1038,19 @@ function MeetingParticipantsList({
             <li key={participant.identity}>
               <span className="participant-dot" />
               <span className="participant-name">{participant.name || participant.identity}</span>
-              {participant.isLocal ? <small>Voce</small> : null}
+              {participant.isLocal ? <small>{t('status.you')}</small> : null}
               {canModerate ? (
                 <div className="participant-actions">
                   <button
                     type="button"
-                    title="Mutar microfone"
+                    title={t('moderation.mute')}
                     onClick={() => moderate('mute', participant.identity, microphonePublication?.trackSid)}
                   >
                     <MicOff size={14} />
                   </button>
                   <button
                     type="button"
-                    title={blocked ? 'Liberar chat' : 'Bloquear chat'}
+                    title={blocked ? t('moderation.unblockChat') : t('moderation.blockChat')}
                     onClick={() => moderate(blocked ? 'unblock-chat' : 'block-chat', participant.identity)}
                   >
                     <MessageSquare size={14} />
@@ -1031,7 +1058,7 @@ function MeetingParticipantsList({
                   <button
                     type="button"
                     className="danger-mini"
-                    title="Remover da reuniao"
+                    title={t('moderation.remove')}
                     onClick={() => moderate('remove', participant.identity)}
                   >
                     <LogOut size={14} />
@@ -1058,6 +1085,8 @@ function MeetingChat({
   onMessageCountChange?: (count: number) => void;
   prominent?: boolean;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [blockedIdentityIds, setBlockedIdentityIds] = React.useState<string[]>([]);
   const [text, setText] = React.useState('');
@@ -1119,10 +1148,10 @@ function MeetingChat({
         });
       }
     }, () => {
-      setStatus((current) => current || 'Reconectando ao chat em tempo real...');
+      setStatus((current) => current || t('chat.reconnecting'));
     });
     return unsubscribe;
-  }, [loadChat]);
+  }, [loadChat, t]);
 
   React.useEffect(() => {
     return () => {
@@ -1164,7 +1193,7 @@ function MeetingChat({
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setStatus('Arquivos devem ter no maximo 5 MB.');
+      setStatus(t('status.fileTooLarge'));
       return;
     }
 
@@ -1205,7 +1234,7 @@ function MeetingChat({
 
   const blocked = blockedIdentityIds.includes(localIdentityId);
   const visibleTypingParticipants = getVisibleTypingParticipants(typingParticipants, localIdentityId);
-  const typingSummary = getTypingSummary(visibleTypingParticipants);
+  const typingSummary = getTypingSummary(visibleTypingParticipants, locale);
 
   return (
     <div className={prominent ? 'custom-chat is-prominent' : 'custom-chat'}>
@@ -1213,8 +1242,8 @@ function MeetingChat({
         {messages.length === 0 ? (
           <div className="empty-chat">
             <MessageSquare size={22} />
-            <p>Nenhuma mensagem ainda.</p>
-            <span>Envie texto, imagens ou arquivos para todos na reuniao.</span>
+            <p>{t('chat.empty')}</p>
+            <span>{t('chat.emptyHint')}</span>
           </div>
         ) : (
           messages.map((message) => (
@@ -1237,7 +1266,7 @@ function MeetingChat({
         <div className="attachment-preview">
           {attachment.type.startsWith('image/') ? <ImageIcon size={16} /> : <FileText size={16} />}
           <span>{attachment.name}</span>
-          <button type="button" onClick={() => setAttachment(undefined)} aria-label="Remover anexo">
+          <button type="button" onClick={() => setAttachment(undefined)} aria-label={t('chat.removeAttachment')}>
             <X size={14} />
           </button>
         </div>
@@ -1245,7 +1274,7 @@ function MeetingChat({
 
       {typingSummary ? <p className="typing-indicator">{typingSummary}</p> : null}
       {status ? <p className="panel-status">{status}</p> : null}
-      {blocked ? <p className="panel-status is-danger">O host bloqueou seu envio no chat.</p> : null}
+      {blocked ? <p className="panel-status is-danger">{t('chat.blocked')}</p> : null}
 
       <div className="chat-compose">
         <input
@@ -1260,7 +1289,7 @@ function MeetingChat({
               void sendMessage();
             }
           }}
-          placeholder={prominent ? 'Escreva uma mensagem para a reuniao...' : 'Mensagem para a reuniao'}
+          placeholder={prominent ? t('chat.inputProminent') : t('chat.input')}
           disabled={blocked}
         />
         <input
@@ -1275,8 +1304,8 @@ function MeetingChat({
           className="chat-icon-button"
           onClick={() => fileInputRef.current?.click()}
           disabled={blocked}
-          aria-label="Anexar arquivo"
-          title="Anexar arquivo"
+          aria-label={t('chat.attach')}
+          title={t('chat.attach')}
         >
           <FileText size={17} />
         </button>
@@ -1285,8 +1314,8 @@ function MeetingChat({
           className="chat-send-button"
           onClick={sendMessage}
           disabled={busy || blocked}
-          aria-label="Enviar mensagem"
-          title="Enviar mensagem"
+          aria-label={t('chat.send')}
+          title={t('chat.send')}
         >
           <Send size={17} />
         </button>
@@ -1315,6 +1344,7 @@ function ChatAttachmentView({ message }: { message: ChatMessage }) {
 }
 
 function BackgroundEffectsPanel({ onDeviceError }: { onDeviceError: () => void }) {
+  const t = useT();
   const { localParticipant } = useLocalParticipant();
   const processorRef = React.useRef<{
     switchTo: (options:
@@ -1331,7 +1361,7 @@ function BackgroundEffectsPanel({ onDeviceError }: { onDeviceError: () => void }
       const publication = await ensureLocalCameraPublication(localParticipant);
       const videoTrack = publication?.videoTrack;
       if (!videoTrack) {
-        throw new Error('Ative a camera para aplicar efeitos de fundo.');
+        throw new Error(t('background.turnCameraOn'));
       }
 
       if (effect === 'none') {
@@ -1346,7 +1376,7 @@ function BackgroundEffectsPanel({ onDeviceError }: { onDeviceError: () => void }
 
       const { BackgroundProcessor, supportsBackgroundProcessors } = await import('@livekit/track-processors');
       if (!supportsBackgroundProcessors()) {
-        throw new Error('Este navegador nao suporta efeitos de fundo.');
+        throw new Error(t('background.notSupported'));
       }
 
       const options =
@@ -1373,7 +1403,7 @@ function BackgroundEffectsPanel({ onDeviceError }: { onDeviceError: () => void }
       return;
     }
     if (!file.type.startsWith('image/')) {
-      setStatus('Escolha uma imagem para o fundo.');
+      setStatus(t('background.chooseImage'));
       return;
     }
     await applyEffect('custom', await readFileAsDataUrl(file));
@@ -1382,16 +1412,16 @@ function BackgroundEffectsPanel({ onDeviceError }: { onDeviceError: () => void }
   return (
     <div className="effects-options">
       <button type="button" className={activeEffect === 'none' ? 'active' : ''} onClick={() => void applyEffect('none')}>
-        Sem efeito
+        {t('background.noEffect')}
       </button>
       <button type="button" className={activeEffect === 'blur' ? 'active' : ''} onClick={() => void applyEffect('blur')}>
-        Desfocar fundo
+        {t('background.blur')}
       </button>
       <button type="button" className={activeEffect === 'brand' ? 'active' : ''} onClick={() => void applyEffect('brand')}>
-        Fundo amazing-ai
+        {t('background.brand')}
       </button>
       <label className={activeEffect === 'custom' ? 'active effect-upload' : 'effect-upload'}>
-        Imagem propria
+        {t('background.custom')}
         <input type="file" accept="image/*" onChange={(event) => void uploadBackground(event.target.files?.[0])} />
       </label>
       {status ? <p className="panel-status is-danger">{status}</p> : null}
@@ -1414,6 +1444,7 @@ function MeetingVideoStage({
   selectedSpotlightKey: StageSpotlightKey | null;
   onToggleSpotlight: (key: StageSpotlightKey) => void | Promise<void>;
 }) {
+  const t = useT();
   const selectedTrack = selectedSpotlightKey
     ? tracks.find((track) => getMeetingTrackSpotlightKey(track) === selectedSpotlightKey)
     : undefined;
@@ -1445,7 +1476,7 @@ function MeetingVideoStage({
     (!selectedTrack || !selectedTrack.participant.isLocal || selectedTrack.source === Track.Source.ScreenShare);
 
   return (
-    <div className="fullscreen-stage" aria-label="Video em tela cheia">
+    <div className="fullscreen-stage" aria-label={t('controls.fullscreen')}>
       <div className={primaryTracks.length > 1 ? 'fullscreen-stage-grid' : 'fullscreen-stage-grid single'}>
         {primaryTracks.length > 0 ? (
           primaryTracks.map((track) => (
@@ -1460,26 +1491,26 @@ function MeetingVideoStage({
         ) : (
           <div className="fullscreen-stage-empty">
             {fullscreenFocus === 'friends'
-              ? 'Aguardando a camera dos seus amigos.'
-              : 'Ative sua camera para se ver em tela cheia.'}
+              ? t('fullscreen.waitingFriends')
+              : t('fullscreen.waitingSelf')}
           </div>
         )}
       </div>
 
       {showLocalPreview && localCameraTrack ? (
-        <aside className="local-camera-preview" aria-label="Sua camera">
+        <aside className="local-camera-preview" aria-label={t('stage.self')}>
           <MeetingStageTile
             track={localCameraTrack}
             selected={getMeetingTrackSpotlightKey(localCameraTrack) === selectedSpotlightKey}
             onToggleSpotlight={onToggleSpotlight}
             tileClassName="local-camera-preview-tile"
           />
-          <span>Voce</span>
+          <span>{t('stage.self')}</span>
         </aside>
       ) : null}
 
       {tracks.length > 1 ? (
-        <div className="stage-thumbnail-strip" aria-label="Escolher video em destaque">
+        <div className="stage-thumbnail-strip" aria-label={t('stage.choose')}>
           {tracks.map((track) => (
             <MeetingStageTile
               key={getMeetingTrackSpotlightKey(track)}
@@ -1521,9 +1552,10 @@ function MeetingStageTile({
   tileClassName?: string;
   onToggleSpotlight: (key: StageSpotlightKey) => void | Promise<void>;
 }) {
+  const t = useT();
   const participantName = getMeetingTrackLabel(track);
   const spotlightKey = getMeetingTrackSpotlightKey(track);
-  const sourceLabel = track.source === Track.Source.ScreenShare ? 'Tela' : 'Camera';
+  const sourceLabel = track.source === Track.Source.ScreenShare ? t('stage.screen') : t('stage.camera');
   const buttonLabel = ariaLabel || getSpotlightAriaLabel({ participantName, source: track.source });
 
   return (
@@ -1558,6 +1590,7 @@ function MeetingChatFocus({
   onSelectSpotlight: (key: StageSpotlightKey) => void;
   selectedSpotlightKey: StageSpotlightKey | null;
 }) {
+  const t = useT();
   const previewSpotlightKey = getChatPreviewSpotlightKey(
     tracks.map((track) => ({
       key: getMeetingTrackSpotlightKey(track),
@@ -1569,19 +1602,19 @@ function MeetingChatFocus({
   const previewTrack = previewSpotlightKey
     ? tracks.find((track) => getMeetingTrackSpotlightKey(track) === previewSpotlightKey)
     : undefined;
-  const previewTrackLabel = previewTrack ? getMeetingTrackLabel(previewTrack) : 'Video';
+  const previewTrackLabel = previewTrack ? getMeetingTrackLabel(previewTrack) : t('controls.video');
 
   return (
-    <section className="meeting-chat-focus" aria-label="Chat em destaque">
+    <section className="meeting-chat-focus" aria-label={t('chat.focusEyebrow')}>
       <div className="chat-focus-main">
         <div className="chat-focus-header">
           <div>
-            <p>Chat da reuniao</p>
-            <h2>Conversa ao vivo</h2>
+            <p>{t('chat.focusEyebrow')}</p>
+            <h2>{t('chat.focusTitle')}</h2>
           </div>
           <button type="button" className="chat-focus-video-button" onClick={onBackToVideo}>
             <Video size={17} />
-            Voltar ao video
+            {t('controls.video')}
           </button>
         </div>
         <MeetingChat
@@ -1592,31 +1625,31 @@ function MeetingChatFocus({
         />
       </div>
 
-      <aside className="chat-video-preview" aria-label="Miniatura do video">
+      <aside className="chat-video-preview" aria-label={t('stage.thumbnail')}>
         <div className="chat-video-preview-head">
           <span>{previewTrackLabel}</span>
           <button type="button" onClick={onBackToVideo}>
-            Ampliar
+            {t('stage.enlarge')}
           </button>
         </div>
         {previewTrack ? (
           <ParticipantTile trackRef={previewTrack} className="chat-video-preview-tile" />
         ) : (
-          <div className="chat-video-preview-empty">Sem video ativo</div>
+          <div className="chat-video-preview-empty">{t('stage.noVideo')}</div>
         )}
         {tracks.length > 1 ? (
-          <div className="chat-preview-strip" aria-label="Escolher video exibido no chat">
+          <div className="chat-preview-strip" aria-label={t('stage.choose')}>
             {tracks.map((track) => {
               const key = getMeetingTrackSpotlightKey(track);
               const participantName = getMeetingTrackLabel(track);
-              const mediaLabel = track.source === Track.Source.ScreenShare ? 'tela' : 'camera';
+              const mediaLabel = track.source === Track.Source.ScreenShare ? t('stage.screen') : t('stage.camera');
 
               return (
                 <MeetingStageTile
                   key={key}
                   track={track}
                   selected={key === previewSpotlightKey}
-                  ariaLabel={`Mostrar ${mediaLabel} de ${participantName} no chat`}
+                  ariaLabel={t('stage.showInChat', { media: mediaLabel, participant: participantName })}
                   onToggleSpotlight={onSelectSpotlight}
                   tileClassName="chat-preview-selector-tile"
                 />
@@ -1630,6 +1663,7 @@ function MeetingChatFocus({
 }
 
 function MeetingDeviceSettings({ onDeviceError }: { onDeviceError: () => void }) {
+  const t = useT();
   const room = useRoomContext();
   const { isCameraEnabled, isMicrophoneEnabled, localParticipant } = useLocalParticipant();
   const videoDevices = useMediaDevices({ kind: 'videoinput', onError: onDeviceError });
@@ -1651,7 +1685,7 @@ function MeetingDeviceSettings({ onDeviceError }: { onDeviceError: () => void })
       setActiveCameraId(deviceId);
     } catch {
       onDeviceError();
-      setStatus('Nao foi possivel trocar a camera.');
+      setStatus(t('devices.cameraError'));
     }
   };
 
@@ -1663,7 +1697,7 @@ function MeetingDeviceSettings({ onDeviceError }: { onDeviceError: () => void })
       setActiveMicrophoneId(deviceId);
     } catch {
       onDeviceError();
-      setStatus('Nao foi possivel trocar o microfone.');
+      setStatus(t('devices.microphoneError'));
     }
   };
 
@@ -1673,43 +1707,42 @@ function MeetingDeviceSettings({ onDeviceError }: { onDeviceError: () => void })
       await room.switchActiveDevice('audiooutput', deviceId, true);
       setActiveSpeakerId(deviceId);
     } catch {
-      setStatus('Este navegador nao permitiu trocar a saida de audio.');
+      setStatus(t('devices.speakerError'));
     }
   };
 
   return (
     <div className="device-settings-panel">
       <p>
-        Escolha camera, microfone e saida de audio sem sair da reuniao. O navegador pode ocultar nomes
-        ate voce permitir camera e microfone.
+        {t('devices.description')}
       </p>
       <MeetingDeviceSelect
-        label="Camera"
+        label={t('devices.camera')}
         devices={groupedDevices.cameras}
         activeDeviceId={activeCameraId}
         disabled={false}
-        emptyLabel="Nenhuma camera encontrada"
+        emptyLabel={t('devices.emptyCamera')}
         onSelect={(deviceId) => void selectCamera(deviceId)}
       />
       <MeetingDeviceSelect
-        label="Microfone"
+        label={t('devices.microphone')}
         devices={groupedDevices.microphones}
         activeDeviceId={activeMicrophoneId}
         disabled={false}
-        emptyLabel="Nenhum microfone encontrado"
+        emptyLabel={t('devices.emptyMicrophone')}
         onSelect={(deviceId) => void selectMicrophone(deviceId)}
       />
       <MeetingDeviceSelect
-        label="Saida de audio"
+        label={t('devices.speaker')}
         devices={groupedDevices.speakers}
         activeDeviceId={activeSpeakerId}
         disabled={!outputSelectionSupported}
-        emptyLabel={outputSelectionSupported ? 'Nenhuma saida encontrada' : 'Seu navegador usa a saida padrao do sistema'}
+        emptyLabel={outputSelectionSupported ? t('devices.emptySpeaker') : t('devices.emptySpeakerUnsupported')}
         onSelect={(deviceId) => void selectSpeaker(deviceId)}
       />
       <div className="device-state-row">
-        <span className={isCameraEnabled ? 'is-on' : ''}>Camera {isCameraEnabled ? 'ativa' : 'desligada'}</span>
-        <span className={isMicrophoneEnabled ? 'is-on' : ''}>Microfone {isMicrophoneEnabled ? 'ativo' : 'mutado'}</span>
+        <span className={isCameraEnabled ? 'is-on' : ''}>{isCameraEnabled ? t('devices.cameraOn') : t('devices.cameraOff')}</span>
+        <span className={isMicrophoneEnabled ? 'is-on' : ''}>{isMicrophoneEnabled ? t('devices.microphoneOn') : t('devices.microphoneMuted')}</span>
       </div>
       {status ? <p className="panel-status">{status}</p> : null}
     </div>
@@ -1787,6 +1820,7 @@ function MeetingCallControls({
   participantCount: number;
   unreadChatCount: number;
 }) {
+  const t = useT();
   const room = useRoomContext();
   const {
     isMicrophoneEnabled,
@@ -1832,35 +1866,35 @@ function MeetingCallControls({
         active={isMicrophoneEnabled}
         disabled={microphone.pending}
         icon={isMicrophoneEnabled ? <Mic size={18} /> : <MicOff size={18} />}
-        label="Microfone"
+        label={t('controls.microphone')}
         onClick={() => microphone.toggle()}
       />
       <MeetingControlButton
         active={isCameraEnabled}
         disabled={camera.pending}
         icon={isCameraEnabled ? <Video size={18} /> : <VideoOff size={18} />}
-        label="Camera"
+        label={t('controls.camera')}
         onClick={() => camera.toggle()}
       />
       <MeetingControlButton
         className="meeting-control-mobile-only"
         disabled={busyCameraSwitch}
         icon={<SwitchCamera size={18} />}
-        label="Virar"
+        label={t('controls.switchCamera')}
         onClick={switchCamera}
       />
       <MeetingControlButton
         active={activeDesktopPanel === 'devices'}
         className="meeting-control-desktop-only"
         icon={<Settings size={18} />}
-        label="Dispositivos"
+        label={t('controls.devices')}
         panelAction
         onClick={() => onToggleDesktopPanel('devices')}
       />
       <MeetingControlButton
         active={activeDesktopPanel === 'effects'}
         icon={<Wand2 size={18} />}
-        label="Efeitos"
+        label={t('controls.effects')}
         panelAction
         onClick={() => onToggleDesktopPanel('effects')}
       />
@@ -1868,20 +1902,20 @@ function MeetingCallControls({
         active={isScreenShareEnabled}
         disabled={screenShare.pending}
         icon={<MonitorUp size={18} />}
-        label="Tela"
+        label={t('controls.screen')}
         onClick={() => screenShare.toggle()}
       />
       <MeetingControlButton
         active={fullscreenActive}
         icon={<Maximize2 size={18} />}
-        label="Tela cheia"
+        label={t('controls.fullscreen')}
         onClick={onToggleFullscreen}
       />
       <MeetingControlButton
         active={activeDesktopPanel === 'participants'}
         badge={participantCount}
         icon={<Users size={18} />}
-        label="Pessoas"
+        label={t('controls.people')}
         panelAction
         onClick={() => onToggleDesktopPanel('participants')}
       />
@@ -1891,17 +1925,17 @@ function MeetingCallControls({
         icon={meetingFocus === 'chat' ? <Video size={18} /> : <MessageSquare size={18} />}
         label={
           meetingFocus === 'chat'
-            ? 'Video'
+            ? t('controls.video')
             : unreadChatCount > 0
-              ? `Chat (${unreadChatCount} novas)`
-              : 'Chat'
+              ? t('controls.chatUnread', { count: unreadChatCount })
+              : t('controls.chat')
         }
         onClick={onToggleChatFocus}
       />
       <MeetingControlButton
         active={activeDesktopPanel === 'share'}
         icon={<QrCode size={18} />}
-        label="Link"
+        label={t('controls.link')}
         panelAction
         onClick={() => onToggleDesktopPanel('share')}
       />
@@ -1909,7 +1943,7 @@ function MeetingCallControls({
         active={activeDesktopPanel === 'host'}
         disabled={!isHost}
         icon={<Shield size={18} />}
-        label="Host"
+        label={t('controls.host')}
         panelAction
         onClick={() => onToggleDesktopPanel('host')}
       />
@@ -1921,9 +1955,9 @@ function MeetingCallControls({
           onClick={onToggleStageFocus}
         />
       ) : null}
-      <DisconnectButton className="meeting-control-button meeting-control-danger" aria-label="Sair" title="Sair">
+      <DisconnectButton className="meeting-control-button meeting-control-danger" aria-label={t('controls.leave')} title={t('controls.leave')}>
         <LogOut size={18} />
-        <span>Sair</span>
+        <span>{t('controls.leave')}</span>
       </DisconnectButton>
     </div>
   );
@@ -1973,6 +2007,7 @@ function MeetingControlButton({
 }
 
 function CopyLinkButton({ url }: { url: string }) {
+  const t = useT();
   const [copied, setCopied] = React.useState(false);
 
   const copy = async () => {
@@ -1984,7 +2019,7 @@ function CopyLinkButton({ url }: { url: string }) {
   return (
     <button className="secondary-action" onClick={copy}>
       <Copy size={16} />
-      {copied ? 'Link copiado' : 'Copiar link'}
+      {copied ? t('share.copied') : t('share.copy')}
     </button>
   );
 }
@@ -2004,6 +2039,7 @@ function MeetingShareCard({ url, label, compact = false }: { url: string; label:
 }
 
 function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boolean }) {
+  const t = useT();
   const [emails, setEmails] = React.useState('');
   const [scheduledAt, setScheduledAt] = React.useState('');
   const [note, setNote] = React.useState('');
@@ -2026,16 +2062,16 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
       <div className="invite-card">
         <div className="invite-card-head">
           <UserPlus size={17} />
-          <strong>Convites por e-mail</strong>
+          <strong>{t('invite.titleHostOnly')}</strong>
         </div>
-        <p>Somente o host pode enviar convites desta sala.</p>
+        <p>{t('invite.hostOnly')}</p>
       </div>
     );
   }
 
   const submit = async () => {
     if (!emails.trim()) {
-      setStatus('Informe pelo menos um e-mail.');
+      setStatus(t('invite.emptyEmail'));
       return;
     }
 
@@ -2051,8 +2087,8 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
       setEmails('');
       setNote('');
       setStatus(response.smtpConfigured
-        ? 'Convites enviados.'
-        : 'Convites registrados. Configure SMTP para envio automatico por e-mail.');
+        ? t('invite.sent')
+        : t('invite.pendingSmtp'));
     } catch (err) {
       setStatus((err as Error).message);
     } finally {
@@ -2064,10 +2100,10 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
     <div className="invite-card">
       <div className="invite-card-head">
         <UserPlus size={17} />
-        <strong>Enviar convite</strong>
+        <strong>{t('invite.title')}</strong>
       </div>
       <label>
-        E-mails
+        {t('invite.emails')}
         <textarea
           value={emails}
           onChange={(event) => setEmails(event.target.value)}
@@ -2076,7 +2112,7 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
         />
       </label>
       <label>
-        Data da agenda
+        {t('invite.date')}
         <input
           type="datetime-local"
           value={scheduledAt}
@@ -2084,17 +2120,17 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
         />
       </label>
       <label>
-        Mensagem
+        {t('invite.message')}
         <textarea
           value={note}
           onChange={(event) => setNote(event.target.value)}
-          placeholder="Opcional"
+          placeholder={t('invite.optional')}
           rows={2}
         />
       </label>
       <button type="button" className="primary-action invite-submit" onClick={submit} disabled={busy}>
         <CalendarClock size={16} />
-        {busy ? 'Enviando...' : 'Enviar convites'}
+        {busy ? t('invite.sending') : t('invite.send')}
       </button>
       {status ? <p className="panel-status">{status}</p> : null}
       {invitations.length > 0 ? (
@@ -2103,7 +2139,7 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
             <li key={invitation.id}>
               <span>{invitation.email}</span>
               <strong className={`invite-status is-${invitation.deliveryStatus}`}>
-                {formatInvitationStatus(invitation)}
+                {formatInvitationStatus(t, invitation)}
               </strong>
             </li>
           ))}
@@ -2113,34 +2149,34 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
   );
 }
 
-function getModerationStatus(action: 'mute' | 'remove' | 'block-chat' | 'unblock-chat', muted?: boolean): string {
+function getModerationStatus(t: Translate, action: 'mute' | 'remove' | 'block-chat' | 'unblock-chat', muted?: boolean): string {
   if (action === 'mute') {
-    return muted ? 'Microfone do participante mutado.' : 'Participante ainda nao publicou microfone.';
+    return muted ? t('moderation.muted') : t('moderation.micNotPublished');
   }
   if (action === 'remove') {
-    return 'Participante removido da reuniao.';
+    return t('moderation.removed');
   }
   if (action === 'block-chat') {
-    return 'Participante bloqueado no chat.';
+    return t('moderation.blocked');
   }
-  return 'Participante liberado no chat.';
+  return t('moderation.unblocked');
 }
 
-function formatInvitationStatus(invitation: RoomInvitation): string {
+function formatInvitationStatus(t: Translate, invitation: RoomInvitation): string {
   if (invitation.deliveryStatus === 'sent') {
-    return 'enviado';
+    return t('invite.statusSent');
   }
   if (invitation.deliveryStatus === 'failed') {
-    return 'falhou';
+    return t('invite.statusFailed');
   }
-  return 'pendente';
+  return t('invite.statusPending');
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('Nao foi possivel ler o arquivo.'));
+    reader.onerror = () => reject(reader.error || new Error('Could not read the file.'));
     reader.readAsDataURL(file);
   });
 }
