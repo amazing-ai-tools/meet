@@ -1918,6 +1918,16 @@ textarea:focus {
     display: none;
   }
 
+  .meeting-control-mobile-only,
+  .meeting-livekit-layout button.meeting-control-mobile-only {
+    display: inline-flex;
+  }
+
+  .meeting-control-desktop-only,
+  .meeting-livekit-layout button.meeting-control-desktop-only {
+    display: none;
+  }
+
   .meeting-livekit-layout.is-fullscreen .meeting-call-controls {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
