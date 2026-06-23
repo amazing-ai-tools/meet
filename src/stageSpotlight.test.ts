@@ -7,14 +7,14 @@ import {
   getStageSpotlightSelectionAfterClick,
 } from './stageSpotlight.ts';
 
-test('getStageSpotlightKey separates participant camera and screen share tracks', () => {
+test('getStageSpotlightKey separates participant camera and screen share tracks without depending on track sid', () => {
   assert.equal(
     getStageSpotlightKey({
       participantIdentity: 'alice',
       source: 'camera',
       publicationTrackSid: 'camera-track',
     }),
-    'alice:camera:camera-track',
+    'alice:camera',
   );
 
   assert.equal(
@@ -23,17 +23,17 @@ test('getStageSpotlightKey separates participant camera and screen share tracks'
       source: 'screen_share',
       publicationTrackSid: 'screen-track',
     }),
-    'alice:screen_share:screen-track',
+    'alice:screen_share',
   );
 });
 
 test('getStageSpotlightSelectionAfterClick toggles the clicked tile focus', () => {
-  assert.equal(getStageSpotlightSelectionAfterClick(null, 'alice:camera:camera-track'), 'alice:camera:camera-track');
+  assert.equal(getStageSpotlightSelectionAfterClick(null, 'alice:camera'), 'alice:camera');
   assert.equal(
-    getStageSpotlightSelectionAfterClick('alice:camera:camera-track', 'alice:screen_share:screen-track'),
-    'alice:screen_share:screen-track',
+    getStageSpotlightSelectionAfterClick('alice:camera', 'alice:screen_share'),
+    'alice:screen_share',
   );
-  assert.equal(getStageSpotlightSelectionAfterClick('alice:camera:camera-track', 'alice:camera:camera-track'), null);
+  assert.equal(getStageSpotlightSelectionAfterClick('alice:camera', 'alice:camera'), null);
 });
 
 test('getSpotlightAriaLabel names cameras and shared screens clearly', () => {

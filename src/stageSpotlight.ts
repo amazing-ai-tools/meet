@@ -7,7 +7,7 @@ export type StageSpotlightTrackInfo = {
 };
 
 export function getStageSpotlightKey(track: StageSpotlightTrackInfo): StageSpotlightKey {
-  return [track.participantIdentity, track.source, track.publicationTrackSid || 'placeholder'].join(':');
+  return [track.participantIdentity, track.source].join(':');
 }
 
 export function getStageSpotlightSelectionAfterClick(
