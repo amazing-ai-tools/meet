@@ -17,6 +17,7 @@ import {
   Send,
   Shield,
   Sparkles,
+  Settings,
   SwitchCamera,
   UserPlus,
   Users,
@@ -78,6 +79,7 @@ import { getMeetingFocusAfterChatClick, getUnreadChatCount, type MeetingFocus } 
 import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import { mergeRoomChatMessages } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
+import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
 import {
   getChatPreviewSpotlightKey,
   getSpotlightAriaLabel,
@@ -918,6 +920,16 @@ function MeetingExperience({
             <MeetingInviteForm roomSlug={roomSlug} isHost={isHost} />
           </section>
 
+          <section className="devices-panel" aria-label="Dispositivos de audio e video">
+            <div className="panel-title-row">
+              <h2>Dispositivos</h2>
+              <button type="button" className="panel-close-button" onClick={closeDesktopSidePanel} aria-label="Fechar painel">
+                <X size={16} />
+              </button>
+            </div>
+            <MeetingDeviceSettings onDeviceError={onDeviceError} />
+          </section>
+
           <section className="effects-panel" aria-label="Efeitos de fundo">
             <div className="panel-title-row">
               <h2>Efeitos</h2>
@@ -1617,6 +1629,137 @@ function MeetingChatFocus({
   );
 }
 
+function MeetingDeviceSettings({ onDeviceError }: { onDeviceError: () => void }) {
+  const room = useRoomContext();
+  const { isCameraEnabled, isMicrophoneEnabled, localParticipant } = useLocalParticipant();
+  const videoDevices = useMediaDevices({ kind: 'videoinput', onError: onDeviceError });
+  const microphoneDevices = useMediaDevices({ kind: 'audioinput', onError: onDeviceError });
+  const speakerDevices = useMediaDevices({ kind: 'audiooutput', onError: onDeviceError });
+  const groupedDevices = groupMediaDevices([...videoDevices, ...microphoneDevices, ...speakerDevices]);
+  const [activeCameraId, setActiveCameraId] = React.useState(() => room.getActiveDevice('videoinput') || '');
+  const [activeMicrophoneId, setActiveMicrophoneId] = React.useState(() => room.getActiveDevice('audioinput') || '');
+  const [activeSpeakerId, setActiveSpeakerId] = React.useState(() => room.getActiveDevice('audiooutput') || '');
+  const [status, setStatus] = React.useState('');
+  const outputSelectionSupported = typeof HTMLMediaElement !== 'undefined'
+    && 'setSinkId' in HTMLMediaElement.prototype;
+
+  const selectCamera = async (deviceId: string) => {
+    setStatus('');
+    try {
+      await localParticipant.setCameraEnabled(true, { deviceId });
+      await room.switchActiveDevice('videoinput', deviceId, true);
+      setActiveCameraId(deviceId);
+    } catch {
+      onDeviceError();
+      setStatus('Nao foi possivel trocar a camera.');
+    }
+  };
+
+  const selectMicrophone = async (deviceId: string) => {
+    setStatus('');
+    try {
+      await localParticipant.setMicrophoneEnabled(true, { deviceId });
+      await room.switchActiveDevice('audioinput', deviceId, true);
+      setActiveMicrophoneId(deviceId);
+    } catch {
+      onDeviceError();
+      setStatus('Nao foi possivel trocar o microfone.');
+    }
+  };
+
+  const selectSpeaker = async (deviceId: string) => {
+    setStatus('');
+    try {
+      await room.switchActiveDevice('audiooutput', deviceId, true);
+      setActiveSpeakerId(deviceId);
+    } catch {
+      setStatus('Este navegador nao permitiu trocar a saida de audio.');
+    }
+  };
+
+  return (
+    <div className="device-settings-panel">
+      <p>
+        Escolha camera, microfone e saida de audio sem sair da reuniao. O navegador pode ocultar nomes
+        ate voce permitir camera e microfone.
+      </p>
+      <MeetingDeviceSelect
+        label="Camera"
+        devices={groupedDevices.cameras}
+        activeDeviceId={activeCameraId}
+        disabled={false}
+        emptyLabel="Nenhuma camera encontrada"
+        onSelect={(deviceId) => void selectCamera(deviceId)}
+      />
+      <MeetingDeviceSelect
+        label="Microfone"
+        devices={groupedDevices.microphones}
+        activeDeviceId={activeMicrophoneId}
+        disabled={false}
+        emptyLabel="Nenhum microfone encontrado"
+        onSelect={(deviceId) => void selectMicrophone(deviceId)}
+      />
+      <MeetingDeviceSelect
+        label="Saida de audio"
+        devices={groupedDevices.speakers}
+        activeDeviceId={activeSpeakerId}
+        disabled={!outputSelectionSupported}
+        emptyLabel={outputSelectionSupported ? 'Nenhuma saida encontrada' : 'Seu navegador usa a saida padrao do sistema'}
+        onSelect={(deviceId) => void selectSpeaker(deviceId)}
+      />
+      <div className="device-state-row">
+        <span className={isCameraEnabled ? 'is-on' : ''}>Camera {isCameraEnabled ? 'ativa' : 'desligada'}</span>
+        <span className={isMicrophoneEnabled ? 'is-on' : ''}>Microfone {isMicrophoneEnabled ? 'ativo' : 'mutado'}</span>
+      </div>
+      {status ? <p className="panel-status">{status}</p> : null}
+    </div>
+  );
+}
+
+function MeetingDeviceSelect({
+  activeDeviceId,
+  devices,
+  disabled,
+  emptyLabel,
+  label,
+  onSelect,
+}: {
+  activeDeviceId: string;
+  devices: MediaDeviceInfo[];
+  disabled: boolean;
+  emptyLabel: string;
+  label: string;
+  onSelect: (deviceId: string) => void;
+}) {
+  if (devices.length === 0) {
+    return (
+      <label className="device-select-row">
+        <span>{label}</span>
+        <select disabled>
+          <option>{emptyLabel}</option>
+        </select>
+      </label>
+    );
+  }
+
+  return (
+    <label className="device-select-row">
+      <span>{label}</span>
+      <select
+        value={activeDeviceId || devices[0]?.deviceId || ''}
+        disabled={disabled}
+        onChange={(event) => onSelect(event.target.value)}
+      >
+        {devices.map((device, index) => (
+          <option key={`${device.kind}-${device.deviceId}`} value={device.deviceId}>
+            {getDeviceDisplayLabel(device, index)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function MeetingCallControls({
   activeDesktopPanel,
   fullscreenActive,
@@ -1700,10 +1843,19 @@ function MeetingCallControls({
         onClick={() => camera.toggle()}
       />
       <MeetingControlButton
+        className="meeting-control-mobile-only"
         disabled={busyCameraSwitch}
         icon={<SwitchCamera size={18} />}
         label="Virar"
         onClick={switchCamera}
+      />
+      <MeetingControlButton
+        active={activeDesktopPanel === 'devices'}
+        className="meeting-control-desktop-only"
+        icon={<Settings size={18} />}
+        label="Dispositivos"
+        panelAction
+        onClick={() => onToggleDesktopPanel('devices')}
       />
       <MeetingControlButton
         active={activeDesktopPanel === 'effects'}
@@ -1780,6 +1932,7 @@ function MeetingCallControls({
 function MeetingControlButton({
   active = false,
   badge,
+  className = '',
   disabled = false,
   icon,
   label,
@@ -1788,6 +1941,7 @@ function MeetingControlButton({
 }: {
   active?: boolean;
   badge?: number;
+  className?: string;
   disabled?: boolean;
   icon: React.ReactNode;
   label: string;
@@ -1801,6 +1955,7 @@ function MeetingControlButton({
         'meeting-control-button',
         active ? 'is-active' : '',
         panelAction ? 'is-panel-action' : '',
+        className,
       ]
         .filter(Boolean)
         .join(' ')}

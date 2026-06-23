@@ -1,4 +1,4 @@
-export type DesktopMeetingPanel = 'participants' | 'share' | 'effects' | 'host' | null;
+export type DesktopMeetingPanel = 'participants' | 'share' | 'effects' | 'host' | 'devices' | null;
 
 export function toggleDesktopPanel(
   current: DesktopMeetingPanel,
