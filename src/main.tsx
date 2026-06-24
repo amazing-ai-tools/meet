@@ -53,8 +53,10 @@ import {
   createTeam,
   createTeamRoom,
   getAppConfig,
+  getMarketingStats,
   getRoom,
   joinRoom,
+  leaveRoom,
   listRoomInvitations,
   listTeamRooms,
   listTeams,
@@ -66,7 +68,7 @@ import {
   subscribeRoomChat,
   loadSession,
 } from './api';
-import type { ChatMessage, JoinResponse, MeetingRoom, RoomInvitation, Session, Team } from './types';
+import type { ChatMessage, JoinResponse, MarketingStats, MeetingRoom, RoomInvitation, Session, Team } from './types';
 import { getCameraDeviceForFacingMode, getNextFacingMode } from './cameraDevices';
 import {
   getFullscreenStageToggleLabel,
@@ -443,6 +445,8 @@ function Dashboard({
         </div>
       </section>
 
+      <MarketingStatsBand />
+
       <section className="meeting-preview" aria-label="Preview de reuniao">
         <div className="video-grid-preview">
           {['Ana', 'Bruno', 'Carla', 'Diego'].map((name, index) => (
@@ -521,6 +525,87 @@ function Dashboard({
           </div>
         )}
       </section>
+    </section>
+  );
+}
+
+function MarketingStatsBand() {
+  const t = useT();
+  const locale = useLocale();
+  const [stats, setStats] = React.useState<MarketingStats>();
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getMarketingStats()
+      .then(({ stats: loadedStats }) => {
+        if (!cancelled) {
+          setStats(loadedStats);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStats({
+            meetingsCreated: 0,
+            teamsCreated: 0,
+            usersJoined: 0,
+            participantHours: 0,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const wholeNumber = React.useMemo(() => new Intl.NumberFormat(locale), [locale]);
+  const hoursNumber = React.useMemo(() => new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+  }), [locale]);
+  const currentStats = stats || {
+    meetingsCreated: 0,
+    teamsCreated: 0,
+    usersJoined: 0,
+    participantHours: 0,
+  };
+  const cards = [
+    {
+      icon: Video,
+      value: wholeNumber.format(currentStats.meetingsCreated),
+      label: t('stats.meetings'),
+    },
+    {
+      icon: Building2,
+      value: wholeNumber.format(currentStats.teamsCreated),
+      label: t('stats.teams'),
+    },
+    {
+      icon: Users,
+      value: wholeNumber.format(currentStats.usersJoined),
+      label: t('stats.users'),
+    },
+    {
+      icon: CalendarClock,
+      value: hoursNumber.format(currentStats.participantHours),
+      label: t('stats.hours'),
+    },
+  ];
+
+  return (
+    <section className="marketing-stats" aria-label={t('stats.title')}>
+      <div className="stats-copy">
+        <span>{t('stats.title')}</span>
+        <p>{t('stats.subtitle')}</p>
+      </div>
+      <div className="stats-grid">
+        {cards.map(({ icon: Icon, value, label }) => (
+          <article className="stat-card" key={label}>
+            <Icon size={20} />
+            <strong>{value}</strong>
+            <small>{label}</small>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -818,6 +903,26 @@ function MeetingRoomView({
   const isHost = join.participant.role === 'host';
   const [connectionStatus, setConnectionStatus] = React.useState(t('meeting.connecting'));
   const [roomError, setRoomError] = React.useState<string | undefined>();
+  const leaveReportedRef = React.useRef(false);
+
+  const reportLeave = React.useCallback((keepalive = false) => {
+    if (leaveReportedRef.current) {
+      return;
+    }
+
+    leaveReportedRef.current = true;
+    void leaveRoom(join.room.slug, keepalive).catch(() => undefined);
+  }, [join.room.slug]);
+
+  React.useEffect(() => {
+    const handleBeforeUnload = () => reportLeave(true);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      reportLeave(true);
+    };
+  }, [reportLeave]);
 
   const handleRoomError = React.useCallback((error: Error) => {
     setConnectionStatus(t('meeting.interrupted'));
@@ -837,7 +942,13 @@ function MeetingRoomView({
         </div>
         <div className="meeting-actions">
           <CopyLinkButton url={meetingUrl} />
-          <button className="leave-button" onClick={() => onNavigate('/')}>
+          <button
+            className="leave-button"
+            onClick={() => {
+              reportLeave();
+              onNavigate('/');
+            }}
+          >
             <LogOut size={17} />
             {t('controls.leave')}
           </button>
@@ -862,7 +973,10 @@ function MeetingRoomView({
           setConnectionStatus(t('meeting.connected'));
           setRoomError(undefined);
         }}
-        onDisconnected={() => setConnectionStatus(t('meeting.disconnected'))}
+        onDisconnected={() => {
+          setConnectionStatus(t('meeting.disconnected'));
+          reportLeave(true);
+        }}
         onError={handleRoomError}
         onMediaDeviceFailure={handleMediaDeviceFailure}
       >

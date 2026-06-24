@@ -114,3 +114,10 @@ export type RoomInvitation = {
   deliveryError?: string;
   createdAt: string;
 };
+
+export type MarketingStats = {
+  meetingsCreated: number;
+  teamsCreated: number;
+  usersJoined: number;
+  participantHours: number;
+};

@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   ChatStreamEvent,
   JoinResponse,
+  MarketingStats,
   MeetingRoom,
   RoomInvitation,
   Session,
@@ -100,6 +101,17 @@ export async function joinRoom(slug: string, displayName: string): Promise<JoinR
   }
 
   return response;
+}
+
+export async function leaveRoom(slug: string, keepalive = false): Promise<void> {
+  await api<void>(`/rooms/${slug}/leave`, {
+    method: 'POST',
+    keepalive,
+  });
+}
+
+export async function getMarketingStats(): Promise<{ stats: MarketingStats }> {
+  return api<{ stats: MarketingStats }>('/stats/marketing');
 }
 
 export async function listRoomChat(slug: string): Promise<{

@@ -4,7 +4,15 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { createChatMessage, createGuestIdentity, createInstantRoom, createRoomInvitation } from '../dist/domain.js';
+import {
+  createChatMessage,
+  createGuestIdentity,
+  createInstantRoom,
+  createParticipant,
+  createParticipantSession,
+  createRoomInvitation,
+  createTeam,
+} from '../dist/domain.js';
 import { JsonStore } from '../dist/store.js';
 
 test('store emits room chat events for new messages and chat block changes', async () => {
@@ -98,6 +106,42 @@ test('store maps external widget contexts to reusable rooms', async () => {
 
   assert.equal(mapping?.roomId, room.id);
   assert.equal(store.findRoomById(mapping.roomId)?.slug, room.slug);
+
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('store exposes persistent marketing stats for landing counters', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'meetteams-store-'));
+  const store = new JsonStore(join(dir, 'state.json'));
+  const host = {
+    id: 'google_host',
+    displayName: 'Host User',
+    email: 'host@example.com',
+    provider: 'google',
+  };
+  const guest = createGuestIdentity('Guest User');
+  const room = createInstantRoom(host, 'Metrics Room');
+  const team = createTeam(host, 'Marketing Team');
+  const hostParticipant = createParticipant(room, host);
+  const guestParticipant = createParticipant(room, guest);
+
+  await store.load();
+  await store.addRoom(room);
+  await store.addTeam(team);
+  await store.addParticipant(hostParticipant);
+  await store.addParticipant(guestParticipant);
+  await store.startParticipantSession(createParticipantSession(room, hostParticipant, '2026-06-24T10:00:00.000Z'));
+  await store.startParticipantSession({
+    ...createParticipantSession(room, guestParticipant, '2026-06-24T10:30:00.000Z'),
+    leftAt: '2026-06-24T11:30:00.000Z',
+  });
+
+  assert.deepEqual(store.getMarketingStats('2026-06-24T12:00:00.000Z'), {
+    meetingsCreated: 1,
+    teamsCreated: 1,
+    usersJoined: 2,
+    participantHours: 3,
+  });
 
   await rm(dir, { recursive: true, force: true });
 });

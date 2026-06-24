@@ -433,6 +433,7 @@ p {
 }
 
 .command-band,
+.marketing-stats,
 .meeting-preview,
 .teams-section,
 .lobby-card,
@@ -481,6 +482,70 @@ p {
 .lobby-form {
   display: flex;
   gap: 10px;
+}
+
+.marketing-stats {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.4fr);
+  gap: 18px;
+  align-items: stretch;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(29, 95, 209, 0.08), rgba(18, 151, 98, 0.08)),
+    #fff;
+}
+
+.stats-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stats-copy span {
+  color: #17468d;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.stats-copy p {
+  margin: 0;
+  color: #687489;
+  line-height: 1.55;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stat-card {
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px;
+  border: 1px solid rgba(20, 33, 59, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.stat-card svg {
+  color: #1d5fd1;
+}
+
+.stat-card strong {
+  color: #14213b;
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+  line-height: 1;
+}
+
+.stat-card small {
+  color: #647086;
+  font-weight: 800;
 }
 
 input,
@@ -2000,6 +2065,7 @@ textarea:focus {
   }
 
   .command-band,
+  .marketing-stats,
   .meeting-preview,
   .lobby-card,
   .team-board,
@@ -2594,6 +2660,14 @@ textarea:focus {
   .command-form,
   .team-builder {
     flex-direction: column;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-card {
+    min-height: 104px;
   }
 
   .video-grid-preview {

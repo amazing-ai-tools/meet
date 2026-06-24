@@ -8,9 +8,12 @@ import {
   createRoomInvitation,
   createTeam,
   createTeamRoom,
+  calculateParticipantHours,
   canHostControlParticipant,
   canSendChatMessage,
   createId,
+  createParticipant,
+  createParticipantSession,
   normalizeWidgetContextId,
 } from '../dist/domain.js';
 import { defaultLiveKitUrl } from '../dist/livekit.js';
@@ -165,4 +168,19 @@ test('widget context ids are stable and safe for external embeds', () => {
     () => normalizeWidgetContextId('   '),
     /Widget context is required/,
   );
+});
+
+test('participant hours sum elapsed time across ended and active sessions', () => {
+  const host = createGuestIdentity('Host User');
+  const guest = createGuestIdentity('Guest User');
+  const room = createInstantRoom(host, 'Metrics Room');
+  const hostParticipant = createParticipant(room, host);
+  const guestParticipant = createParticipant(room, guest);
+  const hostSession = createParticipantSession(room, hostParticipant, '2026-06-24T10:00:00.000Z');
+  const guestSession = {
+    ...createParticipantSession(room, guestParticipant, '2026-06-24T10:30:00.000Z'),
+    leftAt: '2026-06-24T12:00:00.000Z',
+  };
+
+  assert.equal(calculateParticipantHours([hostSession, guestSession], '2026-06-24T12:00:00.000Z'), 3.5);
 });

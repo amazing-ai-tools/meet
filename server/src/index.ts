@@ -6,6 +6,7 @@ import {
   createChatMessage,
   createInstantRoom,
   createParticipant,
+  createParticipantSession,
   createRoomInvitation,
   createTeam,
   createTeamRoom,
@@ -146,6 +147,7 @@ app.post('/api/widget/rooms/resolve', async (request, response, next) => {
     const session = createGuestSession(displayName, authConfig);
     await store.upsertIdentity(session.identity);
     const participant = await store.addParticipant(createParticipant(room, session.identity));
+    await store.startParticipantSession(createParticipantSession(room, participant));
     const livekit = await createLiveKitJoinToken(liveKitConfig, room, session.identity, participant);
 
     response.status(201).json({
@@ -183,6 +185,7 @@ app.post('/api/rooms/:slug/join', withIdentity(false, async (request, response, 
 
   const joinedIdentity = identity || (await createAndSaveGuest(readString(request.body?.displayName, 'Guest')));
   const participant = await store.addParticipant(createParticipant(room, joinedIdentity));
+  await store.startParticipantSession(createParticipantSession(room, participant));
   const livekit = await createLiveKitJoinToken(liveKitConfig, room, joinedIdentity, participant);
 
   response.status(201).json({
@@ -192,6 +195,17 @@ app.post('/api/rooms/:slug/join', withIdentity(false, async (request, response, 
     livekit,
     sessionToken: identity ? undefined : signInMemoryGuest(joinedIdentity),
   });
+}));
+
+app.post('/api/rooms/:slug/leave', withIdentity(true, async (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const session = await store.endActiveParticipantSession(room.id, identity!.id);
+  response.json({ ok: true, session });
 }));
 
 app.get('/api/rooms/:slug/chat', (request, response) => {
@@ -406,6 +420,10 @@ app.get('/api/teams/:teamId/rooms', withIdentity(true, (request, response, ident
 
   response.json({ rooms: store.listRoomsForTeam(team.id) });
 }));
+
+app.get('/api/stats/marketing', (_request, response) => {
+  response.json({ stats: store.getMarketingStats() });
+});
 
 app.use((error: Error, _request: Request, response: Response, _next: unknown) => {
   const status = /required|invalid|must|only/i.test(error.message) ? 400 : 500;

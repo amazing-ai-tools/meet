@@ -5,12 +5,15 @@ import type {
   ChatMessage,
   Identity,
   MeetingParticipant,
+  MeetingParticipantSession,
   MeetingRoom,
+  MarketingStats,
   RoomInvitation,
   RoomInvitationDeliveryStatus,
   Team,
   WidgetRoomContext,
 } from './domain.js';
+import { calculateParticipantHours } from './domain.js';
 
 export type RoomChatEvent =
   | { type: 'message'; roomId: string; message: ChatMessage }
@@ -22,6 +25,7 @@ export type AppState = {
   rooms: MeetingRoom[];
   teams: Team[];
   participants: MeetingParticipant[];
+  participantSessions: MeetingParticipantSession[];
   chatMessages: ChatMessage[];
   chatBlockedIdentityIds: Record<string, string[]>;
   roomInvitations: RoomInvitation[];
@@ -33,6 +37,7 @@ const emptyState: AppState = {
   rooms: [],
   teams: [],
   participants: [],
+  participantSessions: [],
   chatMessages: [],
   chatBlockedIdentityIds: {},
   roomInvitations: [],
@@ -88,6 +93,20 @@ export class JsonStore {
 
   listParticipantsForRoom(roomId: string): MeetingParticipant[] {
     return this.state.participants.filter((participant) => participant.roomId === roomId);
+  }
+
+  getMarketingStats(now = new Date().toISOString()): MarketingStats {
+    const uniqueJoinedIdentityIds = new Set([
+      ...this.state.participants.map((participant) => participant.identityId),
+      ...this.state.participantSessions.map((session) => session.identityId),
+    ]);
+
+    return {
+      meetingsCreated: this.state.rooms.length,
+      teamsCreated: this.state.teams.length,
+      usersJoined: uniqueJoinedIdentityIds.size,
+      participantHours: calculateParticipantHours(this.state.participantSessions, now),
+    };
   }
 
   listChatMessagesForRoom(roomId: string): ChatMessage[] {
@@ -161,6 +180,30 @@ export class JsonStore {
 
     await this.save();
     return participant;
+  }
+
+  async startParticipantSession(session: MeetingParticipantSession): Promise<MeetingParticipantSession> {
+    this.state.participantSessions.push(session);
+    await this.save();
+    return structuredClone(session);
+  }
+
+  async endActiveParticipantSession(
+    roomId: string,
+    identityId: string,
+    leftAt = new Date().toISOString(),
+  ): Promise<MeetingParticipantSession | undefined> {
+    const session = [...this.state.participantSessions]
+      .reverse()
+      .find((saved) => saved.roomId === roomId && saved.identityId === identityId && !saved.leftAt);
+
+    if (!session) {
+      return undefined;
+    }
+
+    session.leftAt = leftAt;
+    await this.save();
+    return structuredClone(session);
   }
 
   async addChatMessage(message: ChatMessage): Promise<ChatMessage> {

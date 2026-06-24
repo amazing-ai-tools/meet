@@ -42,6 +42,15 @@ export type MeetingParticipant = {
   joinedAt: string;
 };
 
+export type MeetingParticipantSession = {
+  id: string;
+  roomId: string;
+  identityId: string;
+  participantId: string;
+  joinedAt: string;
+  leftAt?: string;
+};
+
 export type ChatAttachmentKind = 'image' | 'file';
 
 export type ChatAttachment = {
@@ -97,6 +106,13 @@ export type WidgetRoomContext = {
   contextId: string;
   roomId: string;
   createdAt: string;
+};
+
+export type MarketingStats = {
+  meetingsCreated: number;
+  teamsCreated: number;
+  usersJoined: number;
+  participantHours: number;
 };
 
 const maxAttachmentBytes = 5 * 1024 * 1024;
@@ -175,6 +191,42 @@ export function createParticipant(room: MeetingRoom, identity: Identity): Meetin
     role: room.hostIdentityId === identity.id ? 'host' : identity.provider === 'google' ? 'member' : 'guest',
     joinedAt: new Date().toISOString(),
   };
+}
+
+export function createParticipantSession(
+  room: MeetingRoom,
+  participant: MeetingParticipant,
+  joinedAt = new Date().toISOString(),
+): MeetingParticipantSession {
+  return {
+    id: createId('session'),
+    roomId: room.id,
+    identityId: participant.identityId,
+    participantId: participant.id,
+    joinedAt,
+  };
+}
+
+export function calculateParticipantHours(
+  sessions: MeetingParticipantSession[],
+  now = new Date().toISOString(),
+): number {
+  const nowMs = Date.parse(now);
+  if (!Number.isFinite(nowMs)) {
+    throw new Error('Stats reference date must be valid');
+  }
+
+  const totalHours = sessions.reduce((total, session) => {
+    const joinedAtMs = Date.parse(session.joinedAt);
+    const leftAtMs = Date.parse(session.leftAt || now);
+    if (!Number.isFinite(joinedAtMs) || !Number.isFinite(leftAtMs) || leftAtMs <= joinedAtMs) {
+      return total;
+    }
+
+    return total + ((leftAtMs - joinedAtMs) / 1000 / 60 / 60);
+  }, 0);
+
+  return Math.round(totalHours * 10) / 10;
 }
 
 export function canHostControlParticipant(

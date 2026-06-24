@@ -116,6 +116,12 @@ export type TranslationKey =
   | 'nav.teams'
   | 'share.copied'
   | 'share.copy'
+  | 'stats.hours'
+  | 'stats.meetings'
+  | 'stats.subtitle'
+  | 'stats.teams'
+  | 'stats.title'
+  | 'stats.users'
   | 'stage.camera'
   | 'stage.choose'
   | 'stage.enlarge'
@@ -258,6 +264,12 @@ const pt: TranslationMap = {
   'nav.teams': 'Times',
   'share.copied': 'Link copiado',
   'share.copy': 'Copiar link',
+  'stats.hours': 'horas de reuniao',
+  'stats.meetings': 'reunioes criadas',
+  'stats.subtitle': 'Numeros persistidos do uso real do amazing-ai meet, somando o tempo de cada participante nas salas.',
+  'stats.teams': 'times criados',
+  'stats.title': 'Crescimento da comunidade',
+  'stats.users': 'usuarios em reunioes',
   'stage.camera': 'Camera',
   'stage.choose': 'Escolher video em destaque',
   'stage.enlarge': 'Ampliar',
@@ -384,7 +396,14 @@ const en: TranslationMap = {
   'nav.home': 'Go home',
   'nav.meetings': 'Meetings',
   'nav.rooms': 'Rooms',
+  'share.copied': 'Link copied',
   'share.copy': 'Copy link',
+  'stats.hours': 'meeting hours',
+  'stats.meetings': 'meetings created',
+  'stats.subtitle': 'Persistent real usage numbers for amazing-ai meet, adding up each participant’s time in rooms.',
+  'stats.teams': 'teams created',
+  'stats.title': 'Community growth',
+  'stats.users': 'users in meetings',
   'status.fileReadError': 'Could not read the file.',
   'status.fileTooLarge': 'Files must be 5 MB or smaller.',
   'status.imageOnly': 'Choose an image for the background.',
@@ -518,6 +537,12 @@ const fr: TranslationMap = {
   'nav.teams': 'Equipes',
   'share.copied': 'Lien copie',
   'share.copy': 'Copier le lien',
+  'stats.hours': 'heures de reunion',
+  'stats.meetings': 'reunions creees',
+  'stats.subtitle': 'Chiffres persistants de l’usage reel de amazing-ai meet, additionnant le temps de chaque participant dans les salles.',
+  'stats.teams': 'equipes creees',
+  'stats.title': 'Croissance de la communaute',
+  'stats.users': 'utilisateurs en reunion',
   'status.fileReadError': 'Impossible de lire le fichier.',
   'status.fileTooLarge': 'Les fichiers doivent faire 5 Mo maximum.',
   'status.imageOnly': 'Choisissez une image pour l’arriere-plan.',
