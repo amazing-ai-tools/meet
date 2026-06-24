@@ -460,7 +460,7 @@ function Dashboard({
         <div className="preview-panel">
           <h2>{t('dashboard.previewTitle')}</h2>
           <ul>
-            <li><Mic size={16} /> Audio e video via LiveKit self-hosted</li>
+            <li><Mic size={16} /> Live Áudio e Vídeo</li>
             <li><MonitorUp size={16} /> Compartilhamento de tela</li>
             <li><Users size={16} /> Participantes e chat da reuniao</li>
             <li><Shield size={16} /> Host pode moderar participantes</li>
