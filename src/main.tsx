@@ -1246,49 +1246,53 @@ function MeetingExperience({
               onToggleSpotlight={toggleSpotlight}
             />
           )}
-          <MeetingCallControls
-            activeDesktopPanel={desktopPanel}
-            fullscreenActive={fullscreenActive}
-            fullscreenFocus={fullscreenFocus}
-            meetingFocus={meetingFocus}
-            isHost={isHost}
-            onDeviceError={onDeviceError}
-            onToggleChatFocus={toggleChatFocus}
-            onToggleDesktopPanel={toggleDesktopSidePanel}
-            onToggleFullscreen={toggleFullscreen}
-            onToggleStageFocus={toggleStageFocus}
-            participantCount={participants.length}
-            unreadChatCount={getUnreadChatCount(meetingFocus, chatMessageCount, lastSeenChatMessageCount)}
-          />
-          <div className="mobile-meeting-tabs" aria-label={t('meeting.share')}>
-            <button
-              type="button"
-              className={mobilePanel === 'participants' ? 'active' : ''}
-              aria-expanded={mobilePanel === 'participants'}
-              onClick={() => togglePanel('participants')}
-            >
-              <Users size={16} />
-              {t('controls.people')}
-            </button>
-            <button
-              type="button"
-              className={mobilePanel === 'share' ? 'active' : ''}
-              aria-expanded={mobilePanel === 'share'}
-              onClick={() => togglePanel('share')}
-            >
-              <QrCode size={16} />
-              {t('controls.link')}
-            </button>
-            <button
-              type="button"
-              className={mobilePanel === 'effects' ? 'active' : ''}
-              aria-expanded={mobilePanel === 'effects'}
-              onClick={() => togglePanel('effects')}
-            >
-              <Wand2 size={16} />
-              {t('controls.effects')}
-            </button>
-          </div>
+          {!mobilePanel ? (
+            <>
+              <MeetingCallControls
+                activeDesktopPanel={desktopPanel}
+                fullscreenActive={fullscreenActive}
+                fullscreenFocus={fullscreenFocus}
+                meetingFocus={meetingFocus}
+                isHost={isHost}
+                onDeviceError={onDeviceError}
+                onToggleChatFocus={toggleChatFocus}
+                onToggleDesktopPanel={toggleDesktopSidePanel}
+                onToggleFullscreen={toggleFullscreen}
+                onToggleStageFocus={toggleStageFocus}
+                participantCount={participants.length}
+                unreadChatCount={getUnreadChatCount(meetingFocus, chatMessageCount, lastSeenChatMessageCount)}
+              />
+              <div className="mobile-meeting-tabs" aria-label={t('meeting.share')}>
+                <button
+                  type="button"
+                  className={mobilePanel === 'participants' ? 'active' : ''}
+                  aria-expanded={mobilePanel === 'participants'}
+                  onClick={() => togglePanel('participants')}
+                >
+                  <Users size={16} />
+                  {t('controls.people')}
+                </button>
+                <button
+                  type="button"
+                  className={mobilePanel === 'share' ? 'active' : ''}
+                  aria-expanded={mobilePanel === 'share'}
+                  onClick={() => togglePanel('share')}
+                >
+                  <QrCode size={16} />
+                  {t('controls.link')}
+                </button>
+                <button
+                  type="button"
+                  className={mobilePanel === 'effects' ? 'active' : ''}
+                  aria-expanded={mobilePanel === 'effects'}
+                  onClick={() => togglePanel('effects')}
+                >
+                  <Wand2 size={16} />
+                  {t('controls.effects')}
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
 
         <div
