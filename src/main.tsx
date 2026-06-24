@@ -66,7 +66,7 @@ import {
   loadSession,
 } from './api';
 import type { ChatMessage, JoinResponse, MeetingRoom, RoomInvitation, Session, Team } from './types';
-import { getNextFacingMode, getNextVideoDevice } from './cameraDevices';
+import { getCameraDeviceForFacingMode, getNextFacingMode } from './cameraDevices';
 import {
   getFullscreenStageToggleLabel,
   toggleFullscreenStageFocus,
@@ -1959,15 +1959,15 @@ function MeetingCallControls({
 
     setBusyCameraSwitch(true);
     try {
-      const activeDeviceId = room.getActiveDevice('videoinput');
-      const nextDevice = getNextVideoDevice(videoDevices, activeDeviceId);
+      const nextFacingMode = getNextFacingMode(facingMode);
+      const nextDevice = getCameraDeviceForFacingMode(videoDevices, nextFacingMode);
       if (nextDevice && videoDevices.length > 1) {
         await localParticipant.setCameraEnabled(true, { deviceId: nextDevice.deviceId });
         await room.switchActiveDevice('videoinput', nextDevice.deviceId, true);
+        setFacingMode(nextFacingMode);
         return;
       }
 
-      const nextFacingMode = getNextFacingMode(facingMode);
       await localParticipant.setCameraEnabled(true, { facingMode: nextFacingMode });
       setFacingMode(nextFacingMode);
     } catch {
