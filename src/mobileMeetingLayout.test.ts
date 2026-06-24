@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout.ts';
+import { getMobileStageFitMode, toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout.ts';
 
 test('mobile meeting starts video-first with no drawer open', () => {
   const panel: MobileMeetingPanel = null;
@@ -18,4 +18,9 @@ test('toggleMobilePanel opens one meeting drawer at a time', () => {
 
 test('toggleMobilePanel closes the active drawer when tapped again', () => {
   assert.equal(toggleMobilePanel('chat', 'chat'), null);
+});
+
+test('mobile selected camera fills the viewport while screen share preserves content', () => {
+  assert.equal(getMobileStageFitMode('camera'), 'cover');
+  assert.equal(getMobileStageFitMode('screen_share'), 'contain');
 });

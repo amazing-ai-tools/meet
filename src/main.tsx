@@ -75,8 +75,13 @@ import {
 import { toggleMeetingFullscreen } from './fullscreen';
 import { createMeetingUrl } from './meetingLinks';
 import { toggleDesktopPanel, type DesktopMeetingPanel } from './desktopMeetingLayout';
-import { getMeetingFocusAfterChatClick, getUnreadChatCount, type MeetingFocus } from './meetingFocus';
-import { toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
+import {
+  getChatToggleControlLabelKey,
+  getMeetingFocusAfterChatClick,
+  getUnreadChatCount,
+  type MeetingFocus,
+} from './meetingFocus';
+import { getMobileStageFitMode, toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
 import { mergeRoomChatMessages } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
 import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
@@ -1609,7 +1614,9 @@ function MobileImmersiveVideoStage({
             track={activeTrack}
             selected
             onToggleSpotlight={onSelectSpotlight}
-            tileClassName="mobile-immersive-main-tile"
+            tileClassName={`mobile-immersive-main-tile is-fit-${getMobileStageFitMode(
+              activeTrack.source === Track.Source.ScreenShare ? 'screen_share' : 'camera',
+            )}`}
           />
         ) : (
           <div className="fullscreen-stage-empty">{t('stage.noVideo')}</div>
@@ -2032,13 +2039,17 @@ function MeetingCallControls({
       <MeetingControlButton
         active={meetingFocus === 'chat'}
         badge={unreadChatCount > 0 ? unreadChatCount : undefined}
-        icon={meetingFocus === 'chat' ? <Video size={18} /> : <MessageSquare size={18} />}
+        className="meeting-control-chat-toggle"
+        icon={
+          <div className="chat-video-toggle-icon" aria-hidden="true">
+            <MessageSquare size={18} />
+            <Video size={10} />
+          </div>
+        }
         label={
-          meetingFocus === 'chat'
-            ? t('controls.video')
-            : unreadChatCount > 0
+          unreadChatCount > 0
               ? t('controls.chatUnread', { count: unreadChatCount })
-              : t('controls.chat')
+              : t(getChatToggleControlLabelKey(meetingFocus))
         }
         onClick={onToggleChatFocus}
       />

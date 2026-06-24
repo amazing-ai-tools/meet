@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  getChatToggleControlLabelKey,
   getMeetingFocusAfterChatClick,
   getUnreadChatCount,
   type MeetingFocus,
@@ -12,6 +13,11 @@ test('chat icon toggles the primary meeting focus', () => {
 
   assert.equal(getMeetingFocusAfterChatClick(focus), 'chat');
   assert.equal(getMeetingFocusAfterChatClick('chat'), 'video');
+});
+
+test('chat toggle keeps a stable control label in every focus mode', () => {
+  assert.equal(getChatToggleControlLabelKey('video'), 'controls.chatVideoToggle');
+  assert.equal(getChatToggleControlLabelKey('chat'), 'controls.chatVideoToggle');
 });
 
 test('unread chat count only grows while video is focused', () => {

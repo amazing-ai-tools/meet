@@ -26,6 +26,7 @@ export type TranslationKey =
   | 'chat.send'
   | 'controls.camera'
   | 'controls.chat'
+  | 'controls.chatVideoToggle'
   | 'controls.chatUnread'
   | 'controls.devices'
   | 'controls.effects'
@@ -157,6 +158,7 @@ const pt: TranslationMap = {
   'chat.send': 'Enviar mensagem',
   'controls.camera': 'Camera',
   'controls.chat': 'Chat',
+  'controls.chatVideoToggle': 'Chat / video',
   'controls.chatUnread': 'Chat ({count} novas)',
   'controls.devices': 'Dispositivos',
   'controls.effects': 'Efeitos',
@@ -284,6 +286,7 @@ const en: TranslationMap = {
   'chat.reconnecting': 'Reconnecting to realtime chat...',
   'chat.send': 'Send message',
   'controls.chatUnread': 'Chat ({count} new)',
+  'controls.chatVideoToggle': 'Chat / video',
   'controls.devices': 'Devices',
   'controls.fullscreen': 'Full screen',
   'controls.leave': 'Leave',
@@ -400,6 +403,7 @@ const fr: TranslationMap = {
   'chat.removeAttachment': 'Retirer la piece jointe',
   'chat.send': 'Envoyer le message',
   'controls.camera': 'Camera',
+  'controls.chatVideoToggle': 'Chat / video',
   'controls.chatUnread': 'Chat ({count} nouveaux)',
   'controls.devices': 'Peripheriques',
   'controls.effects': 'Effets',
