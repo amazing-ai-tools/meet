@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   getChatPreviewSpotlightKey,
+  getMobileStageSpotlightKey,
   getSpotlightAriaLabel,
   getStageSpotlightKey,
   getStageSpotlightSelectionAfterClick,
@@ -91,4 +92,17 @@ test('getChatPreviewSpotlightKey falls back to local camera, then any camera, th
     getChatPreviewSpotlightKey([{ key: 'bob:screen_share', isLocal: false, source: 'screen_share' }], null),
     'bob:screen_share',
   );
+});
+
+test('getMobileStageSpotlightKey prioritizes selected stream, then screen share, then remote camera', () => {
+  const tracks = [
+    { key: 'alice:camera', isLocal: true, source: 'camera' },
+    { key: 'bob:camera', isLocal: false, source: 'camera' },
+    { key: 'bob:screen_share', isLocal: false, source: 'screen_share' },
+  ];
+
+  assert.equal(getMobileStageSpotlightKey(tracks, 'bob:camera'), 'bob:camera');
+  assert.equal(getMobileStageSpotlightKey(tracks, null), 'bob:screen_share');
+  assert.equal(getMobileStageSpotlightKey(tracks.slice(0, 2), null), 'bob:camera');
+  assert.equal(getMobileStageSpotlightKey([tracks[0]], null), 'alice:camera');
 });

@@ -41,6 +41,23 @@ export function getChatPreviewSpotlightKey(
   );
 }
 
+export function getMobileStageSpotlightKey(
+  tracks: ChatPreviewSpotlightTrack[],
+  selected: StageSpotlightKey | null,
+): StageSpotlightKey | null {
+  if (selected && tracks.some((track) => track.key === selected)) {
+    return selected;
+  }
+
+  return (
+    tracks.find((track) => track.source === 'screen_share')?.key ||
+    tracks.find((track) => !track.isLocal && track.source === 'camera')?.key ||
+    tracks.find((track) => track.source === 'camera')?.key ||
+    tracks[0]?.key ||
+    null
+  );
+}
+
 export function getSpotlightAriaLabel({
   participantName,
   source,

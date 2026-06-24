@@ -83,6 +83,7 @@ import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
 import { createTranslator, resolveLocale, type AppLocale } from './i18n';
 import {
   getChatPreviewSpotlightKey,
+  getMobileStageSpotlightKey,
   getSpotlightAriaLabel,
   getStageSpotlightKey,
   getStageSpotlightSelectionAfterClick,
@@ -112,6 +113,32 @@ type Translate = ReturnType<typeof createTranslator>;
 const browserLocale = resolveLocale(typeof navigator === 'undefined' ? [] : navigator.languages);
 const I18nContext = React.createContext<Translate>(createTranslator(browserLocale));
 const LocaleContext = React.createContext<AppLocale>(browserLocale);
+
+function useMediaQuery(query: string): boolean {
+  const getMatches = React.useCallback(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return false;
+    }
+
+    return window.matchMedia(query).matches;
+  }, [query]);
+
+  const [matches, setMatches] = React.useState(getMatches);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(query);
+    const updateMatches = () => setMatches(mediaQuery.matches);
+    updateMatches();
+    mediaQuery.addEventListener('change', updateMatches);
+    return () => mediaQuery.removeEventListener('change', updateMatches);
+  }, [query]);
+
+  return matches;
+}
 
 function useT() {
   return React.useContext(I18nContext);
@@ -717,6 +744,7 @@ function MeetingExperience({
   const t = useT();
   const layoutContext = useCreateLayoutContext();
   const stageRef = React.useRef<HTMLDivElement>(null);
+  const isMobileMeeting = useMediaQuery('(max-width: 980px)');
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
     { source: Track.Source.ScreenShare, withPlaceholder: false },
@@ -830,6 +858,12 @@ function MeetingExperience({
   const selectChatPreviewSpotlight = (key: StageSpotlightKey) => {
     setSpotlightKey(key);
   };
+  const selectMobileStageSpotlight = (key: StageSpotlightKey) => {
+    setMeetingFocus('video');
+    setDesktopPanel(null);
+    setMobilePanel(null);
+    setSpotlightKey(key);
+  };
   const toggleStageFocus = () => {
     setSpotlightKey(null);
     setFullscreenFocus((current) => toggleFullscreenStageFocus(current));
@@ -862,7 +896,9 @@ function MeetingExperience({
               tracks={tracks}
               fullscreenActive={fullscreenActive}
               fullscreenFocus={fullscreenFocus}
+              immersiveMobile={isMobileMeeting}
               selectedSpotlightKey={spotlightKey}
+              onSelectMobileSpotlight={selectMobileStageSpotlight}
               onToggleSpotlight={toggleSpotlight}
             />
           )}
@@ -1435,19 +1471,33 @@ function MeetingVideoStage({
   tracks,
   fullscreenActive,
   fullscreenFocus,
+  immersiveMobile,
   selectedSpotlightKey,
+  onSelectMobileSpotlight,
   onToggleSpotlight,
 }: {
   tracks: MeetingTrack[];
   fullscreenActive: boolean;
   fullscreenFocus: FullscreenStageFocus;
+  immersiveMobile: boolean;
   selectedSpotlightKey: StageSpotlightKey | null;
+  onSelectMobileSpotlight: (key: StageSpotlightKey) => void;
   onToggleSpotlight: (key: StageSpotlightKey) => void | Promise<void>;
 }) {
   const t = useT();
   const selectedTrack = selectedSpotlightKey
     ? tracks.find((track) => getMeetingTrackSpotlightKey(track) === selectedSpotlightKey)
     : undefined;
+
+  if (immersiveMobile && !fullscreenActive) {
+    return (
+      <MobileImmersiveVideoStage
+        tracks={tracks}
+        selectedSpotlightKey={selectedSpotlightKey}
+        onSelectSpotlight={onSelectMobileSpotlight}
+      />
+    );
+  }
 
   if (!fullscreenActive) {
     return (
@@ -1520,6 +1570,66 @@ function MeetingVideoStage({
               tileClassName="stage-thumbnail-tile"
             />
           ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MobileImmersiveVideoStage({
+  tracks,
+  selectedSpotlightKey,
+  onSelectSpotlight,
+}: {
+  tracks: MeetingTrack[];
+  selectedSpotlightKey: StageSpotlightKey | null;
+  onSelectSpotlight: (key: StageSpotlightKey) => void;
+}) {
+  const t = useT();
+  const activeSpotlightKey = getMobileStageSpotlightKey(
+    tracks.map((track) => ({
+      key: getMeetingTrackSpotlightKey(track),
+      isLocal: track.participant.isLocal,
+      source: track.source,
+    })),
+    selectedSpotlightKey,
+  );
+  const activeTrack = activeSpotlightKey
+    ? tracks.find((track) => getMeetingTrackSpotlightKey(track) === activeSpotlightKey)
+    : undefined;
+  const thumbnailTracks = activeSpotlightKey
+    ? tracks.filter((track) => getMeetingTrackSpotlightKey(track) !== activeSpotlightKey)
+    : tracks.slice(1);
+
+  return (
+    <div className="mobile-immersive-stage" aria-label={t('stage.choose')}>
+      <div className="mobile-immersive-main">
+        {activeTrack ? (
+          <MeetingStageTile
+            track={activeTrack}
+            selected
+            onToggleSpotlight={onSelectSpotlight}
+            tileClassName="mobile-immersive-main-tile"
+          />
+        ) : (
+          <div className="fullscreen-stage-empty">{t('stage.noVideo')}</div>
+        )}
+      </div>
+
+      {thumbnailTracks.length > 0 ? (
+        <div className="mobile-immersive-thumbnails" aria-label={t('stage.choose')}>
+          {thumbnailTracks.map((track) => {
+            const key = getMeetingTrackSpotlightKey(track);
+            return (
+              <MeetingStageTile
+                key={key}
+                track={track}
+                selected={key === activeSpotlightKey}
+                onToggleSpotlight={onSelectSpotlight}
+                tileClassName="mobile-immersive-thumbnail-tile"
+              />
+            );
+          })}
         </div>
       ) : null}
     </div>

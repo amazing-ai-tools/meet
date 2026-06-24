@@ -629,6 +629,10 @@ textarea:focus {
   gap: 12px;
 }
 
+.mobile-immersive-stage {
+  display: none;
+}
+
 .meeting-stage-tile-button,
 .meeting-livekit-layout button.meeting-stage-tile-button {
   position: relative;
@@ -1717,6 +1721,7 @@ textarea:focus {
     min-height: 100dvh;
     display: block;
     background: #0c1222;
+    overflow: hidden;
   }
 
   .side-rail {
@@ -1746,10 +1751,60 @@ textarea:focus {
   .meeting-stage {
     height: 100dvh;
     min-height: 100vh;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    padding: 10px;
-    gap: 10px;
+    position: relative;
+    display: block;
+    padding: 0;
+    gap: 0;
     overflow: hidden;
+    background: #050914;
+  }
+
+  .meeting-stage .meeting-header {
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top));
+    left: 10px;
+    right: 10px;
+    z-index: 62;
+    min-height: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    pointer-events: none;
+  }
+
+  .meeting-stage .meeting-header > div:first-child {
+    max-width: min(72vw, 310px);
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 14px;
+    background: rgba(5, 9, 20, 0.58);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(14px);
+  }
+
+  .meeting-stage .meeting-header h1 {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.92rem;
+  }
+
+  .meeting-stage .meeting-header p {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.68rem;
+  }
+
+  .meeting-stage .meeting-alert {
+    position: absolute;
+    top: calc(max(10px, env(safe-area-inset-top)) + 68px);
+    left: 10px;
+    right: 10px;
+    z-index: 65;
+    margin: 0;
   }
 
   .meeting-livekit-layout {
@@ -1761,12 +1816,16 @@ textarea:focus {
 
   .livekit-shell {
     min-height: 0;
-    height: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .meeting-video-panel {
-    height: 100%;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    position: relative;
+    height: 100dvh;
+    display: block;
+    overflow: hidden;
   }
 
   .meeting-video-panel.is-chat-focus {
@@ -1898,6 +1957,86 @@ textarea:focus {
     padding: 6px;
   }
 
+  .mobile-immersive-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+    overflow: hidden;
+    background: #050914;
+  }
+
+  .mobile-immersive-main {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #050914;
+  }
+
+  .mobile-immersive-main-tile,
+  .meeting-livekit-layout button.mobile-immersive-main-tile {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: #050914;
+    box-shadow: none;
+  }
+
+  .mobile-immersive-main-tile .lk-participant-tile,
+  .mobile-immersive-main-tile .meeting-stage-participant-tile {
+    border-radius: 0;
+  }
+
+  .mobile-immersive-main-tile video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #050914;
+  }
+
+  .mobile-immersive-main-tile .meeting-stage-tile-chip {
+    left: 12px;
+    top: calc(max(10px, env(safe-area-inset-top)) + 58px);
+    background: rgba(5, 9, 20, 0.58);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-immersive-thumbnails {
+    position: absolute;
+    top: calc(max(10px, env(safe-area-inset-top)) + 104px);
+    right: 10px;
+    z-index: 38;
+    max-height: min(38dvh, 310px);
+    width: 96px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 16px;
+    background: rgba(5, 9, 20, 0.48);
+    box-shadow: 0 18px 54px rgba(0, 0, 0, 0.26);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-immersive-thumbnail-tile,
+  .meeting-livekit-layout button.mobile-immersive-thumbnail-tile {
+    flex: 0 0 64px;
+    width: 82px;
+    height: 64px;
+    border-radius: 12px;
+    box-shadow: none;
+  }
+
+  .mobile-immersive-thumbnail-tile .meeting-stage-tile-chip {
+    left: 5px;
+    top: 5px;
+    padding: 2px 5px;
+    font-size: 0.55rem;
+  }
+
   .meeting-video-grid .lk-grid-layout {
     gap: 6px;
   }
@@ -1907,10 +2046,28 @@ textarea:focus {
   }
 
   .meeting-call-controls {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 58;
+    min-height: 0;
     padding: 8px;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    background: rgba(5, 9, 20, 0.62);
+    box-shadow: 0 18px 70px rgba(0, 0, 0, 0.32);
+    backdrop-filter: blur(18px);
+    scrollbar-width: none;
+  }
+
+  .meeting-call-controls::-webkit-scrollbar {
+    display: none;
   }
 
   .meeting-control-button.is-panel-action,
@@ -1929,18 +2086,19 @@ textarea:focus {
   }
 
   .meeting-livekit-layout.is-fullscreen .meeting-call-controls {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex;
   }
 
   .meeting-control-button,
   .meeting-livekit-layout button.meeting-control-button {
     min-width: 0;
-    min-height: 48px;
-    width: 100%;
-    flex-direction: column;
+    min-height: 46px;
+    width: 46px;
+    flex: 0 0 46px;
+    flex-direction: row;
     justify-content: center;
-    gap: 4px;
-    padding: 6px 4px;
+    gap: 0;
+    padding: 0;
     font-size: 0.72rem;
   }
 
@@ -1953,11 +2111,7 @@ textarea:focus {
 
   .meeting-control-button span,
   .meeting-livekit-layout button.meeting-control-button span {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1.05;
+    display: none;
   }
 
   .fullscreen-stage {
@@ -1986,25 +2140,33 @@ textarea:focus {
   }
 
   .mobile-meeting-tabs {
-    padding: 8px;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    background: #0b1120;
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 70px);
+    z-index: 56;
+    padding: 6px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    background: rgba(5, 9, 20, 0.5);
+    box-shadow: 0 18px 54px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(18px);
   }
 
   .mobile-meeting-tabs button {
     min-width: 0;
-    min-height: 42px;
-    padding: 8px 6px;
+    min-height: 38px;
+    padding: 0 11px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
     border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 8px;
-    background: #172033;
+    border-radius: 999px;
+    background: rgba(23, 32, 51, 0.82);
     color: #dbeafe;
     font-size: 0.82rem;
     font-weight: 800;
@@ -2020,8 +2182,8 @@ textarea:focus {
     position: absolute;
     left: 8px;
     right: 8px;
-    bottom: 66px;
-    z-index: 20;
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 132px);
+    z-index: 57;
     max-height: min(54dvh, 430px);
     padding: 12px;
     display: none;
@@ -2130,7 +2292,7 @@ textarea:focus {
   }
 
   .meeting-stage {
-    padding: 8px;
+    padding: 0;
   }
 
   .meeting-header h1 {
