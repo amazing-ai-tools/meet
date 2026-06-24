@@ -1657,6 +1657,44 @@ textarea:focus {
   color: #17468d;
 }
 
+.invite-card-collapsible {
+  padding: 0;
+  overflow: hidden;
+}
+
+.invite-card-collapsible summary {
+  padding: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.invite-card-collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.invite-card-collapsible summary::after {
+  content: '+';
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #174ea6;
+  font-weight: 900;
+}
+
+.invite-card-collapsible[open] summary::after {
+  content: '-';
+}
+
+.invite-card-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
 .invite-card p {
   margin: 0;
   color: #60708a;
@@ -2573,6 +2611,32 @@ textarea:focus {
     box-shadow: 0 22px 80px rgba(2, 6, 23, 0.38);
   }
 
+  .meeting-side-panel.is-share-open {
+    left: 10px;
+    right: 10px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    max-height: min(68dvh, 560px);
+    padding: 0;
+    overflow-y: auto;
+    align-content: start;
+    border-color: rgba(191, 219, 254, 0.42);
+    border-radius: 26px 26px 18px 18px;
+    background: rgba(8, 13, 25, 0.92);
+    color: #eaf2ff;
+    box-shadow: 0 -24px 84px rgba(0, 0, 0, 0.46);
+    backdrop-filter: blur(22px);
+  }
+
+  .meeting-side-panel.is-share-open::before {
+    content: '';
+    width: 44px;
+    height: 4px;
+    margin: 10px auto 0;
+    display: block;
+    border-radius: 999px;
+    background: rgba(226, 232, 240, 0.36);
+  }
+
   .meeting-side-panel.is-desktop-open {
     display: none;
   }
@@ -2638,6 +2702,88 @@ textarea:focus {
 
   .share-panel .share-card code {
     font-size: 0.72rem;
+  }
+
+  .meeting-side-panel.is-share-open .share-panel {
+    gap: 10px;
+    padding: 8px 12px 14px;
+  }
+
+  .meeting-side-panel.is-share-open .share-title-row {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: 0 -12px;
+    padding: 8px 12px 10px;
+    background: linear-gradient(180deg, rgba(8, 13, 25, 0.98), rgba(8, 13, 25, 0.84));
+    color: #f8fbff;
+    backdrop-filter: blur(18px);
+  }
+
+  .meeting-side-panel.is-share-open .share-title-row h2 {
+    font-size: 1rem;
+  }
+
+  .meeting-side-panel.is-share-open .panel-close-button {
+    background: rgba(255, 255, 255, 0.1);
+    color: #dbeafe;
+  }
+
+  .meeting-side-panel.is-share-open .share-card.compact {
+    padding: 14px;
+    gap: 10px;
+    border-color: rgba(125, 178, 255, 0.24);
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.86);
+    color: #eaf2ff;
+  }
+
+  .meeting-side-panel.is-share-open .share-card-head {
+    justify-content: center;
+    color: #bfdbfe;
+  }
+
+  .meeting-side-panel.is-share-open .share-card.compact svg:not(.lucide) {
+    width: min(42vw, 168px);
+    height: min(42vw, 168px);
+    padding: 8px;
+    border-radius: 18px;
+    background: #fff;
+  }
+
+  .meeting-side-panel.is-share-open .share-card code {
+    width: 100%;
+    max-height: 48px;
+    padding: 8px 10px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(2, 6, 23, 0.48);
+    color: #cbd5e1;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .meeting-side-panel.is-share-open .share-card .secondary-action {
+    min-height: 46px;
+    border-radius: 16px;
+    background: #dbeafe;
+    color: #174ea6;
+    font-weight: 900;
+  }
+
+  .meeting-side-panel.is-share-open .invite-card {
+    border-color: rgba(125, 178, 255, 0.22);
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.78);
+    color: #eaf2ff;
+  }
+
+  .meeting-side-panel.is-share-open .invite-card-head {
+    color: #bfdbfe;
+  }
+
+  .meeting-side-panel.is-share-open .invite-card p,
+  .meeting-side-panel.is-share-open .invite-card label {
+    color: #cbd5e1;
   }
 
   .effects-panel {

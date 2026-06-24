@@ -2520,7 +2520,7 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
 
   if (!isHost) {
     return (
-      <div className="invite-card">
+      <div className="invite-card invite-card-readonly">
         <div className="invite-card-head">
           <UserPlus size={17} />
           <strong>{t('invite.titleHostOnly')}</strong>
@@ -2558,55 +2558,57 @@ function MeetingInviteForm({ roomSlug, isHost }: { roomSlug: string; isHost: boo
   };
 
   return (
-    <div className="invite-card">
-      <div className="invite-card-head">
+    <details className="invite-card invite-card-collapsible">
+      <summary className="invite-card-head">
         <UserPlus size={17} />
         <strong>{t('invite.title')}</strong>
+      </summary>
+      <div className="invite-card-body">
+        <label>
+          {t('invite.emails')}
+          <textarea
+            value={emails}
+            onChange={(event) => setEmails(event.target.value)}
+            placeholder="ana@empresa.com, bruno@empresa.com"
+            rows={3}
+          />
+        </label>
+        <label>
+          {t('invite.date')}
+          <input
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(event) => setScheduledAt(event.target.value)}
+          />
+        </label>
+        <label>
+          {t('invite.message')}
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder={t('invite.optional')}
+            rows={2}
+          />
+        </label>
+        <button type="button" className="primary-action invite-submit" onClick={submit} disabled={busy}>
+          <CalendarClock size={16} />
+          {busy ? t('invite.sending') : t('invite.send')}
+        </button>
+        {status ? <p className="panel-status">{status}</p> : null}
+        {invitations.length > 0 ? (
+          <ul className="invite-list">
+            {invitations.slice(0, 6).map((invitation) => (
+              <li key={invitation.id}>
+                <span>{invitation.email}</span>
+                <strong className={`invite-status is-${invitation.deliveryStatus}`}>
+                  {formatInvitationStatus(t, invitation)}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
-      <label>
-        {t('invite.emails')}
-        <textarea
-          value={emails}
-          onChange={(event) => setEmails(event.target.value)}
-          placeholder="ana@empresa.com, bruno@empresa.com"
-          rows={3}
-        />
-      </label>
-      <label>
-        {t('invite.date')}
-        <input
-          type="datetime-local"
-          value={scheduledAt}
-          onChange={(event) => setScheduledAt(event.target.value)}
-        />
-      </label>
-      <label>
-        {t('invite.message')}
-        <textarea
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder={t('invite.optional')}
-          rows={2}
-        />
-      </label>
-      <button type="button" className="primary-action invite-submit" onClick={submit} disabled={busy}>
-        <CalendarClock size={16} />
-        {busy ? t('invite.sending') : t('invite.send')}
-      </button>
-      {status ? <p className="panel-status">{status}</p> : null}
-      {invitations.length > 0 ? (
-        <ul className="invite-list">
-          {invitations.slice(0, 6).map((invitation) => (
-            <li key={invitation.id}>
-              <span>{invitation.email}</span>
-              <strong className={`invite-status is-${invitation.deliveryStatus}`}>
-                {formatInvitationStatus(t, invitation)}
-              </strong>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
+    </details>
   );
 }
 
