@@ -84,7 +84,12 @@ import {
   getUnreadChatCount,
   type MeetingFocus,
 } from './meetingFocus';
-import { getMobileStageFitMode, toggleMobilePanel, type MobileMeetingPanel } from './mobileMeetingLayout';
+import {
+  getMobileChromeAutoHideDelayMs,
+  getMobileStageFitMode,
+  toggleMobilePanel,
+  type MobileMeetingPanel,
+} from './mobileMeetingLayout';
 import { mergeRoomChatMessages } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
 import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
@@ -1022,6 +1027,8 @@ function MeetingExperience({
   const [fullscreenActive, setFullscreenActive] = React.useState(false);
   const [fullscreenFocus, setFullscreenFocus] = React.useState<FullscreenStageFocus>('friends');
   const [spotlightKey, setSpotlightKey] = React.useState<StageSpotlightKey | null>(null);
+  const [mobileChromeVisible, setMobileChromeVisible] = React.useState(true);
+  const mobileChromeTimerRef = React.useRef<number>();
 
   React.useEffect(() => {
     const updateFullscreenState = () => {
@@ -1040,6 +1047,43 @@ function MeetingExperience({
       document.removeEventListener('webkitfullscreenchange', updateFullscreenState);
     };
   }, []);
+
+  const scheduleMobileChromeHide = React.useCallback(() => {
+    if (mobileChromeTimerRef.current) {
+      window.clearTimeout(mobileChromeTimerRef.current);
+    }
+    mobileChromeTimerRef.current = window.setTimeout(() => {
+      setMobileChromeVisible(false);
+    }, getMobileChromeAutoHideDelayMs(meetingFocus));
+  }, [meetingFocus]);
+
+  const showMobileChrome = React.useCallback(() => {
+    if (!isMobileMeeting) {
+      return;
+    }
+
+    setMobileChromeVisible(true);
+    scheduleMobileChromeHide();
+  }, [isMobileMeeting, scheduleMobileChromeHide]);
+
+  React.useEffect(() => {
+    if (!isMobileMeeting) {
+      if (mobileChromeTimerRef.current) {
+        window.clearTimeout(mobileChromeTimerRef.current);
+      }
+      setMobileChromeVisible(true);
+      return;
+    }
+
+    setMobileChromeVisible(true);
+    scheduleMobileChromeHide();
+
+    return () => {
+      if (mobileChromeTimerRef.current) {
+        window.clearTimeout(mobileChromeTimerRef.current);
+      }
+    };
+  }, [isMobileMeeting, meetingFocus, scheduleMobileChromeHide]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -1082,12 +1126,14 @@ function MeetingExperience({
   }, [meetingFocus, roomSlug]);
 
   const togglePanel = (panel: Exclude<MobileMeetingPanel, null>) => {
+    showMobileChrome();
     setMobilePanel((current) => toggleMobilePanel(current, panel));
   };
   const toggleDesktopSidePanel = (panel: Exclude<DesktopMeetingPanel, null>) => {
     setDesktopPanel((current) => toggleDesktopPanel(current, panel));
   };
   const toggleChatFocus = () => {
+    showMobileChrome();
     setMeetingFocus((current) => {
       const nextFocus = getMeetingFocusAfterChatClick(current);
       if (nextFocus === 'chat') {
@@ -1111,6 +1157,7 @@ function MeetingExperience({
     setFullscreenActive(entered);
   };
   const toggleSpotlight = async (key: StageSpotlightKey) => {
+    showMobileChrome();
     setMeetingFocus('video');
     setDesktopPanel(null);
     setMobilePanel(null);
@@ -1120,28 +1167,60 @@ function MeetingExperience({
     }
   };
   const selectChatPreviewSpotlight = (key: StageSpotlightKey) => {
+    showMobileChrome();
     setSpotlightKey(key);
   };
   const selectMobileStageSpotlight = (key: StageSpotlightKey) => {
+    showMobileChrome();
     setMeetingFocus('video');
     setDesktopPanel(null);
     setMobilePanel(null);
     setSpotlightKey(key);
   };
   const toggleStageFocus = () => {
+    showMobileChrome();
     setSpotlightKey(null);
     setFullscreenFocus((current) => toggleFullscreenStageFocus(current));
+  };
+
+  const handleMeetingPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isMobileMeeting) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    if (
+      target.closest(
+        'button, a, input, textarea, select, .meeting-call-controls, .mobile-meeting-tabs, .meeting-side-panel, .chat-compose',
+      )
+    ) {
+      return;
+    }
+
+    showMobileChrome();
   };
 
   return (
     <LayoutContextProvider value={layoutContext}>
       <div
         className={
-          fullscreenActive
-            ? `meeting-livekit-layout is-fullscreen is-stage-${fullscreenFocus} is-focus-${meetingFocus}`
-            : `meeting-livekit-layout is-focus-${meetingFocus}`
+          [
+            'meeting-livekit-layout',
+            fullscreenActive ? 'is-fullscreen' : '',
+            fullscreenActive ? `is-stage-${fullscreenFocus}` : '',
+            `is-focus-${meetingFocus}`,
+            isMobileMeeting && mobileChromeVisible ? 'is-mobile-chrome-visible' : '',
+            isMobileMeeting && !mobileChromeVisible ? 'is-mobile-chrome-hidden' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')
         }
         ref={stageRef}
+        onPointerDown={handleMeetingPointerDown}
       >
         <div className={meetingFocus === 'chat' ? 'meeting-video-panel is-chat-focus' : 'meeting-video-panel'}>
           <RoomAudioRenderer />
