@@ -2056,7 +2056,7 @@ textarea:focus {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 8px;
+    gap: 6px;
     overflow-x: auto;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
@@ -2092,9 +2092,9 @@ textarea:focus {
   .meeting-control-button,
   .meeting-livekit-layout button.meeting-control-button {
     min-width: 0;
-    min-height: 46px;
-    width: 46px;
-    flex: 0 0 46px;
+    min-height: 42px;
+    width: 42px;
+    flex: 0 0 42px;
     flex-direction: row;
     justify-content: center;
     gap: 0;
@@ -2104,9 +2104,9 @@ textarea:focus {
 
   .meeting-control-button svg,
   .meeting-livekit-layout button.meeting-control-button svg {
-    width: 17px;
-    height: 17px;
-    flex-basis: 17px;
+    width: 16px;
+    height: 16px;
+    flex-basis: 16px;
   }
 
   .meeting-control-button span,
