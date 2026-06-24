@@ -662,6 +662,7 @@ function WidgetRoute() {
           <MeetingChat
             roomSlug={widget.room.slug}
             localIdentityId={widget.session.identity.id}
+            compactPlaceholder
             prominent
           />
           {videoOpen ? (
@@ -1263,11 +1264,13 @@ function MeetingChat({
   roomSlug,
   localIdentityId,
   onMessageCountChange,
+  compactPlaceholder = false,
   prominent = false,
 }: {
   roomSlug: string;
   localIdentityId: string;
   onMessageCountChange?: (count: number) => void;
+  compactPlaceholder?: boolean;
   prominent?: boolean;
 }) {
   const t = useT();
@@ -1474,7 +1477,7 @@ function MeetingChat({
               void sendMessage();
             }
           }}
-          placeholder={prominent ? t('chat.inputProminent') : t('chat.input')}
+          placeholder={compactPlaceholder ? t('chat.input') : prominent ? t('chat.inputProminent') : t('chat.input')}
           disabled={blocked}
         />
         <input
