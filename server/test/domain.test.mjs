@@ -11,6 +11,7 @@ import {
   canHostControlParticipant,
   canSendChatMessage,
   createId,
+  normalizeWidgetContextId,
 } from '../dist/domain.js';
 import { defaultLiveKitUrl } from '../dist/livekit.js';
 
@@ -153,5 +154,15 @@ test('room invitations reject invalid emails and past schedule dates', () => {
   assert.throws(
     () => createRoomInvitation(room, host, { email: 'friend@example.com', scheduledAt: '2020-01-01T00:00:00.000Z' }),
     /future date/,
+  );
+});
+
+test('widget context ids are stable and safe for external embeds', () => {
+  assert.equal(normalizeWidgetContextId('  Game Room 123  '), 'game-room-123');
+  assert.equal(normalizeWidgetContextId('mesa:partida/42'), 'mesa-partida-42');
+
+  assert.throws(
+    () => normalizeWidgetContextId('   '),
+    /Widget context is required/,
   );
 });

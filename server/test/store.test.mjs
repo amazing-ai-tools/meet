@@ -79,3 +79,25 @@ test('store persists room invitations and delivery status updates', async () => 
 
   await rm(dir, { recursive: true, force: true });
 });
+
+test('store maps external widget contexts to reusable rooms', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'meetteams-store-'));
+  const store = new JsonStore(join(dir, 'state.json'));
+  const host = createGuestIdentity('Widget Host');
+  const room = createInstantRoom(host, 'Game table chat');
+
+  await store.load();
+  await store.addRoom(room);
+  await store.addWidgetRoomContext({
+    contextId: 'game-room-123',
+    roomId: room.id,
+    createdAt: '2026-06-24T12:00:00.000Z',
+  });
+
+  const mapping = store.findWidgetRoomContext('game-room-123');
+
+  assert.equal(mapping?.roomId, room.id);
+  assert.equal(store.findRoomById(mapping.roomId)?.slug, room.slug);
+
+  await rm(dir, { recursive: true, force: true });
+});

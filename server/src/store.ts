@@ -9,6 +9,7 @@ import type {
   RoomInvitation,
   RoomInvitationDeliveryStatus,
   Team,
+  WidgetRoomContext,
 } from './domain.js';
 
 export type RoomChatEvent =
@@ -24,6 +25,7 @@ export type AppState = {
   chatMessages: ChatMessage[];
   chatBlockedIdentityIds: Record<string, string[]>;
   roomInvitations: RoomInvitation[];
+  widgetRoomContexts: WidgetRoomContext[];
 };
 
 const emptyState: AppState = {
@@ -34,6 +36,7 @@ const emptyState: AppState = {
   chatMessages: [],
   chatBlockedIdentityIds: {},
   roomInvitations: [],
+  widgetRoomContexts: [],
 };
 
 export class JsonStore {
@@ -102,6 +105,10 @@ export class JsonStore {
     return this.state.roomInvitations
       .filter((invitation) => invitation.roomId === roomId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  findWidgetRoomContext(contextId: string): WidgetRoomContext | undefined {
+    return this.state.widgetRoomContexts.find((context) => context.contextId === contextId);
   }
 
   subscribeRoomChat(roomId: string, listener: (event: RoomChatEvent) => void): () => void {
@@ -199,6 +206,18 @@ export class JsonStore {
     invitation.deliveryError = deliveryError;
     await this.save();
     return structuredClone(invitation);
+  }
+
+  async addWidgetRoomContext(context: WidgetRoomContext): Promise<WidgetRoomContext> {
+    const existingIndex = this.state.widgetRoomContexts.findIndex((saved) => saved.contextId === context.contextId);
+    if (existingIndex >= 0) {
+      this.state.widgetRoomContexts[existingIndex] = context;
+    } else {
+      this.state.widgetRoomContexts.push(context);
+    }
+
+    await this.save();
+    return structuredClone(context);
   }
 
   setChatTyping(roomId: string, identityId: string, displayName: string, typing: boolean): void {

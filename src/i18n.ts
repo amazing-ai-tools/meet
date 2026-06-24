@@ -128,7 +128,17 @@ export type TranslationKey =
   | 'status.fileTooLarge'
   | 'status.imageOnly'
   | 'status.linkCopied'
-  | 'status.you';
+  | 'status.you'
+  | 'widget.closeVideo'
+  | 'widget.contextMissing'
+  | 'widget.fullRoom'
+  | 'widget.name'
+  | 'widget.openFull'
+  | 'widget.openVideo'
+  | 'widget.powered'
+  | 'widget.start'
+  | 'widget.subtitle'
+  | 'widget.title';
 
 type TranslationMap = Record<TranslationKey, string>;
 
@@ -261,6 +271,16 @@ const pt: TranslationMap = {
   'status.imageOnly': 'Escolha uma imagem para o fundo.',
   'status.linkCopied': 'Link copiado',
   'status.you': 'Voce',
+  'widget.closeVideo': 'Fechar video',
+  'widget.contextMissing': 'Informe contextId na URL do widget.',
+  'widget.fullRoom': 'Sala completa',
+  'widget.name': 'Seu nome',
+  'widget.openFull': 'Abrir no Meet',
+  'widget.openVideo': 'Abrir video',
+  'widget.powered': 'amazing-ai meet widget',
+  'widget.start': 'Entrar no widget',
+  'widget.subtitle': 'Chat e video para este contexto.',
+  'widget.title': 'Widget de reuniao',
 };
 
 const en: TranslationMap = {
@@ -370,6 +390,16 @@ const en: TranslationMap = {
   'status.imageOnly': 'Choose an image for the background.',
   'status.linkCopied': 'Link copied',
   'status.you': 'You',
+  'widget.closeVideo': 'Close video',
+  'widget.contextMissing': 'Add contextId to the widget URL.',
+  'widget.fullRoom': 'Full room',
+  'widget.name': 'Your name',
+  'widget.openFull': 'Open in Meet',
+  'widget.openVideo': 'Open video',
+  'widget.powered': 'amazing-ai meet widget',
+  'widget.start': 'Enter widget',
+  'widget.subtitle': 'Chat and video for this context.',
+  'widget.title': 'Meeting widget',
   'stage.choose': 'Choose featured video',
   'stage.enlarge': 'Enlarge',
   'stage.noVideo': 'No active video',
@@ -493,6 +523,16 @@ const fr: TranslationMap = {
   'status.imageOnly': 'Choisissez une image pour l’arriere-plan.',
   'status.linkCopied': 'Lien copie',
   'status.you': 'Vous',
+  'widget.closeVideo': 'Fermer la video',
+  'widget.contextMissing': 'Ajoutez contextId a l’URL du widget.',
+  'widget.fullRoom': 'Salle complete',
+  'widget.name': 'Votre nom',
+  'widget.openFull': 'Ouvrir dans Meet',
+  'widget.openVideo': 'Ouvrir la video',
+  'widget.powered': 'widget amazing-ai meet',
+  'widget.start': 'Entrer dans le widget',
+  'widget.subtitle': 'Chat et video pour ce contexte.',
+  'widget.title': 'Widget de reunion',
   'stage.choose': 'Choisir la video en vedette',
   'stage.enlarge': 'Agrandir',
   'stage.noVideo': 'Aucune video active',

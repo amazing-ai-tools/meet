@@ -80,6 +80,26 @@ Open the required LiveKit ports on the VPS:
 - `50000-50100/udp`
 - `5349/tcp` if TURN/TLS is used
 
+## Embeddable widget
+
+External sites can embed a compact amazing-ai meet widget with chat and optional floating video.
+
+```html
+<iframe
+  src="https://meet.app.amazing-ai.tools/widget?contextId=game-room-123&displayName=Ana&title=Game%20Room"
+  allow="camera; microphone; display-capture; fullscreen"
+  style="width: 380px; height: 560px; border: 0; border-radius: 12px;"
+></iframe>
+```
+
+Parameters:
+
+- `contextId`: required stable external context identifier. The backend reuses the same Meet room for the same context.
+- `displayName`: optional guest name shown in chat/video.
+- `title`: optional widget/room title.
+
+The widget uses the same backend room, chat SSE stream, attachments, and LiveKit infrastructure as the main app. Use the full room link exposed inside the widget when a user needs the complete meeting interface.
+
 ## Verification
 
 ```bash

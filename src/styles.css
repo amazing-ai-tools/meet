@@ -23,6 +23,11 @@ body.is-meeting-route #bz-widget-root {
   pointer-events: none !important;
 }
 
+body.is-widget-route {
+  min-height: 100dvh;
+  background: transparent;
+}
+
 button,
 input,
 textarea {
@@ -52,6 +57,212 @@ textarea:disabled {
 .product-shell.meeting-shell {
   grid-template-columns: minmax(0, 1fr);
   background: #0b1020;
+}
+
+.widget-shell {
+  min-height: 100dvh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(76, 111, 255, 0.16), transparent 32%),
+    linear-gradient(180deg, #0c1324 0%, #11192b 100%);
+  color: #eef4ff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.widget-header {
+  min-height: 64px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(7, 12, 24, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.widget-header p,
+.widget-header h1 {
+  margin: 0;
+}
+
+.widget-header p {
+  color: #8fa7cf;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.widget-header h1 {
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.widget-open-link,
+.widget-room-toolbar button,
+.widget-entry .primary-action {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.widget-open-link {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #eef4ff;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.widget-entry {
+  min-height: 0;
+  padding: 18px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.widget-entry h2,
+.widget-entry p {
+  margin: 0;
+}
+
+.widget-entry p {
+  max-width: 280px;
+  color: #aab9d2;
+}
+
+.widget-entry input {
+  width: min(100%, 320px);
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.widget-entry .primary-action {
+  padding: 0 16px;
+  background: #5d7cff;
+  color: #fff;
+  font-weight: 850;
+}
+
+.widget-room {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.widget-room-toolbar {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.widget-room-toolbar button {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #eef4ff;
+  font-weight: 800;
+}
+
+.widget-room-toolbar .secondary-action {
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #eef4ff;
+  font-size: 0.8rem;
+}
+
+.widget-room .custom-chat.is-prominent {
+  min-height: 0;
+  height: 100%;
+  padding: 0 12px 12px;
+  background: transparent;
+  border: 0;
+}
+
+.widget-room .custom-chat.is-prominent .chat-messages {
+  min-height: 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.widget-room .custom-chat.is-prominent .chat-compose {
+  background: rgba(6, 10, 20, 0.86);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.widget-video-room {
+  position: absolute;
+  inset: auto 12px 78px auto;
+  z-index: 20;
+}
+
+.widget-video-bubble {
+  width: min(42vw, 220px);
+  min-width: 168px;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 12px;
+  background: #050914;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+}
+
+.widget-video-actions {
+  position: absolute;
+  z-index: 2;
+  inset: 8px 8px auto 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.widget-video-actions button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+
+.widget-video-tile {
+  width: 100%;
+  height: 100%;
+}
+
+.widget-video-empty {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  color: #aab9d2;
 }
 
 .meeting-shell .side-rail {

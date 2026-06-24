@@ -55,6 +55,15 @@ export type JoinResponse = {
   sessionToken?: string;
 };
 
+export type WidgetRoomResponse = {
+  contextId: string;
+  room: MeetingRoom;
+  roomUrl: string;
+  session: Session;
+  participant: MeetingParticipant;
+  livekit: LiveKitJoin;
+};
+
 export type ChatAttachment = {
   id: string;
   name: string;

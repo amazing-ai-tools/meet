@@ -93,6 +93,12 @@ export type RoomInvitationInput = {
   note?: string;
 };
 
+export type WidgetRoomContext = {
+  contextId: string;
+  roomId: string;
+  createdAt: string;
+};
+
 const maxAttachmentBytes = 5 * 1024 * 1024;
 
 export function createId(prefix: string): string {
@@ -221,6 +227,21 @@ export function createRoomInvitation(
     deliveryStatus: 'pending',
     createdAt: new Date().toISOString(),
   };
+}
+
+export function normalizeWidgetContextId(contextId: string): string {
+  const normalized = contextId
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120);
+
+  if (!normalized) {
+    throw new Error('Widget context is required');
+  }
+
+  return normalized;
 }
 
 export function normalizeDisplayName(name: string): string {

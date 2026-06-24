@@ -9,6 +9,7 @@ import {
   createRoomInvitation,
   createTeam,
   createTeamRoom,
+  normalizeWidgetContextId,
   type Identity,
 } from './domain.js';
 import {
@@ -122,6 +123,43 @@ app.post('/api/rooms/instant', withIdentity(false, async (request, response, ide
     sessionToken: identity ? undefined : signInMemoryGuest(host),
   });
 }));
+
+app.post('/api/widget/rooms/resolve', async (request, response, next) => {
+  try {
+    const contextId = normalizeWidgetContextId(readString(request.body?.contextId, ''));
+    const displayName = readString(request.body?.displayName, 'Guest');
+    const title = readString(request.body?.title, `Widget ${contextId}`);
+    const existingContext = store.findWidgetRoomContext(contextId);
+    let room = existingContext ? store.findRoomById(existingContext.roomId) : undefined;
+    let host: Identity | undefined = room ? store.findIdentity(room.hostIdentityId) : undefined;
+
+    if (!room || !host) {
+      host = await createAndSaveGuest(`Widget ${contextId}`);
+      room = await store.addRoom(createInstantRoom(host, title));
+      await store.addWidgetRoomContext({
+        contextId,
+        roomId: room.id,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    const session = createGuestSession(displayName, authConfig);
+    await store.upsertIdentity(session.identity);
+    const participant = await store.addParticipant(createParticipant(room, session.identity));
+    const livekit = await createLiveKitJoinToken(liveKitConfig, room, session.identity, participant);
+
+    response.status(201).json({
+      contextId,
+      room,
+      roomUrl: `${publicOrigin}/r/${room.slug}`,
+      session,
+      participant,
+      livekit,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get('/api/rooms/:slug', (request, response) => {
   const room = store.findRoomBySlug(request.params.slug);

@@ -49,6 +49,7 @@ import {
   createGoogleSession,
   createGuestSession,
   createInstantRoom,
+  resolveWidgetRoom,
   createTeam,
   createTeamRoom,
   getAppConfig,
@@ -86,6 +87,7 @@ import { mergeRoomChatMessages } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
 import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
 import { createTranslator, resolveLocale, type AppLocale } from './i18n';
+import { readWidgetEmbedParams } from './widgetEmbed';
 import {
   getChatPreviewSpotlightKey,
   getMobileStageSpotlightKey,
@@ -202,15 +204,23 @@ function App() {
   };
 
   const roomMatch = route.match(/^\/r\/([a-z0-9]+)$/);
+  const isWidgetRoute = route === '/widget';
 
   React.useEffect(() => {
-    document.body.classList.toggle('is-meeting-route', Boolean(roomMatch));
-    return () => document.body.classList.remove('is-meeting-route');
-  }, [roomMatch]);
+    document.body.classList.toggle('is-meeting-route', Boolean(roomMatch) || isWidgetRoute);
+    document.body.classList.toggle('is-widget-route', isWidgetRoute);
+    return () => {
+      document.body.classList.remove('is-meeting-route');
+      document.body.classList.remove('is-widget-route');
+    };
+  }, [isWidgetRoute, roomMatch]);
 
   return (
     <I18nContext.Provider value={translate}>
     <LocaleContext.Provider value={locale}>
+    {isWidgetRoute ? (
+      <WidgetRoute />
+    ) : (
     <main className={roomMatch ? 'product-shell meeting-shell' : 'product-shell'}>
       <Sidebar session={session} onNavigate={navigate} onLogout={logout} />
       {roomMatch ? (
@@ -230,6 +240,7 @@ function App() {
         />
       )}
     </main>
+    )}
     </LocaleContext.Provider>
     </I18nContext.Provider>
   );
@@ -565,6 +576,139 @@ function GoogleSignIn({
       <div ref={buttonRef} />
       {status && <small>{status}</small>}
     </div>
+  );
+}
+
+function WidgetRoute() {
+  const t = useT();
+  const params = React.useMemo(() => readWidgetEmbedParams(window.location.search), []);
+  const [displayName, setDisplayName] = React.useState(params.displayName);
+  const [widget, setWidget] = React.useState<Awaited<ReturnType<typeof resolveWidgetRoom>>>();
+  const [videoOpen, setVideoOpen] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const enterWidget = async () => {
+    if (!params.contextId) {
+      setError(t('widget.contextMissing'));
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    try {
+      const response = await resolveWidgetRoom({
+        contextId: params.contextId,
+        displayName: displayName || t('app.guest'),
+        title: params.title || params.contextId,
+      });
+      setWidget(response);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (params.contextId && params.displayName) {
+      void enterWidget();
+    }
+    // The widget parameters are fixed for the iframe lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <main className="widget-shell">
+      <header className="widget-header">
+        <div>
+          <p>{t('widget.powered')}</p>
+          <h1>{params.title || t('widget.title')}</h1>
+        </div>
+        {widget ? (
+          <a className="widget-open-link" href={widget.roomUrl} target="_blank" rel="noreferrer">
+            <Maximize2 size={15} />
+            {t('widget.openFull')}
+          </a>
+        ) : null}
+      </header>
+
+      {!widget ? (
+        <section className="widget-entry">
+          <MessageSquare size={28} />
+          <h2>{t('widget.title')}</h2>
+          <p>{params.contextId ? t('widget.subtitle') : t('widget.contextMissing')}</p>
+          <input
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder={t('widget.name')}
+            aria-label={t('widget.name')}
+          />
+          {error ? <p className="panel-status is-danger">{error}</p> : null}
+          <button className="primary-action" type="button" onClick={enterWidget} disabled={busy || !params.contextId}>
+            <MessageSquare size={17} />
+            {busy ? t('invite.sending') : t('widget.start')}
+          </button>
+        </section>
+      ) : (
+        <section className="widget-room">
+          <div className="widget-room-toolbar">
+            <button type="button" onClick={() => setVideoOpen((current) => !current)}>
+              {videoOpen ? <VideoOff size={16} /> : <Video size={16} />}
+              {videoOpen ? t('widget.closeVideo') : t('widget.openVideo')}
+            </button>
+            <CopyLinkButton url={widget.roomUrl} />
+          </div>
+          <MeetingChat
+            roomSlug={widget.room.slug}
+            localIdentityId={widget.session.identity.id}
+            prominent
+          />
+          {videoOpen ? (
+            <LiveKitRoom
+              token={widget.livekit.token}
+              serverUrl={widget.livekit.url}
+              connect
+              video
+              audio
+              className="widget-video-room"
+              data-lk-theme="default"
+            >
+              <WidgetVideoBubble onClose={() => setVideoOpen(false)} />
+            </LiveKitRoom>
+          ) : null}
+        </section>
+      )}
+    </main>
+  );
+}
+
+function WidgetVideoBubble({ onClose }: { onClose: () => void }) {
+  const t = useT();
+  const tracks = useTracks([
+    { source: Track.Source.ScreenShare, withPlaceholder: false },
+    { source: Track.Source.Camera, withPlaceholder: true },
+  ]);
+  const selectedTrack = tracks[0];
+
+  return (
+    <aside className="widget-video-bubble" aria-label={t('controls.video')}>
+      <div className="widget-video-actions">
+        <span>{t('controls.video')}</span>
+        <button type="button" onClick={onClose} aria-label={t('widget.closeVideo')}>
+          <X size={15} />
+        </button>
+      </div>
+      <RoomAudioRenderer />
+      {selectedTrack ? (
+        <ParticipantTile trackRef={selectedTrack} className="widget-video-tile" />
+      ) : (
+        <div className="widget-video-empty">
+          <Video size={20} />
+          {t('stage.noVideo')}
+        </div>
+      )}
+    </aside>
   );
 }
 

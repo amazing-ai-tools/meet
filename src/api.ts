@@ -7,6 +7,7 @@ import type {
   RoomInvitation,
   Session,
   Team,
+  WidgetRoomResponse,
 } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -67,6 +68,20 @@ export async function createInstantRoom(title: string, displayName: string): Pro
     saveSession({ identity: response.host, token: response.sessionToken });
   }
 
+  return response;
+}
+
+export async function resolveWidgetRoom(input: {
+  contextId: string;
+  displayName: string;
+  title?: string;
+}): Promise<WidgetRoomResponse> {
+  const response = await api<WidgetRoomResponse>('/widget/rooms/resolve', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+
+  saveSession(response.session);
   return response;
 }
 
