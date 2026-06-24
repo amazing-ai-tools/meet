@@ -2450,6 +2450,13 @@ textarea:focus {
     transform: translate(-50%, 18px);
   }
 
+  .meeting-livekit-layout.is-mobile-panel-open .meeting-call-controls {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(-50%, 18px);
+  }
+
   .meeting-call-controls::-webkit-scrollbar {
     display: none;
   }
@@ -2553,7 +2560,21 @@ textarea:focus {
     transform: translateX(14px);
   }
 
+  .meeting-livekit-layout.is-mobile-panel-open .mobile-meeting-tabs {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateX(14px);
+  }
+
   .meeting-livekit-layout.is-mobile-chrome-hidden .mobile-immersive-thumbnails {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateX(14px);
+  }
+
+  .meeting-livekit-layout.is-mobile-panel-open .mobile-immersive-thumbnails {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;

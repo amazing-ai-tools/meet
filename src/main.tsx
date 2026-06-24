@@ -1215,6 +1215,7 @@ function MeetingExperience({
             `is-focus-${meetingFocus}`,
             isMobileMeeting && mobileChromeVisible ? 'is-mobile-chrome-visible' : '',
             isMobileMeeting && !mobileChromeVisible ? 'is-mobile-chrome-hidden' : '',
+            isMobileMeeting && mobilePanel ? 'is-mobile-panel-open' : '',
           ]
             .filter(Boolean)
             .join(' ')
