@@ -90,6 +90,11 @@ import {
   toggleMobilePanel,
   type MobileMeetingPanel,
 } from './mobileMeetingLayout';
+import {
+  clampFloatingPreviewPosition,
+  getDefaultFloatingPreviewPosition,
+  type FloatingPreviewPosition,
+} from './mobileFloatingPreview';
 import { mergeRoomChatMessages } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
 import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
@@ -2053,6 +2058,14 @@ function MeetingChatFocus({
   selectedSpotlightKey: StageSpotlightKey | null;
 }) {
   const t = useT();
+  const isMobile = useMediaQuery('(max-width: 760px)');
+  const previewRef = React.useRef<HTMLElement | null>(null);
+  const dragRef = React.useRef<{
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+  const [previewPosition, setPreviewPosition] = React.useState<FloatingPreviewPosition | null>(null);
   const previewSpotlightKey = getChatPreviewSpotlightKey(
     tracks.map((track) => ({
       key: getMeetingTrackSpotlightKey(track),
@@ -2065,6 +2078,94 @@ function MeetingChatFocus({
     ? tracks.find((track) => getMeetingTrackSpotlightKey(track) === previewSpotlightKey)
     : undefined;
   const previewTrackLabel = previewTrack ? getMeetingTrackLabel(previewTrack) : t('controls.video');
+
+  const getPreviewBounds = React.useCallback(() => {
+    const preview = previewRef.current;
+    const width = preview?.offsetWidth || 132;
+    const height = preview?.offsetHeight || 92;
+
+    return {
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      previewWidth: width,
+      previewHeight: height,
+      margin: 12,
+      topOffset: 62,
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!isMobile || typeof window === 'undefined') {
+      setPreviewPosition(null);
+      return undefined;
+    }
+
+    const placePreview = () => {
+      setPreviewPosition((current) => {
+        const bounds = getPreviewBounds();
+        return current
+          ? clampFloatingPreviewPosition(current, bounds)
+          : getDefaultFloatingPreviewPosition(bounds);
+      });
+    };
+
+    placePreview();
+    window.addEventListener('resize', placePreview);
+    window.addEventListener('orientationchange', placePreview);
+    return () => {
+      window.removeEventListener('resize', placePreview);
+      window.removeEventListener('orientationchange', placePreview);
+    };
+  }, [getPreviewBounds, isMobile]);
+
+  const handlePreviewPointerDown = React.useCallback(
+    (event: React.PointerEvent<HTMLElement>) => {
+      if (!isMobile) {
+        return;
+      }
+
+      const bounds = getPreviewBounds();
+      const currentPosition = previewPosition ?? getDefaultFloatingPreviewPosition(bounds);
+      dragRef.current = {
+        pointerId: event.pointerId,
+        offsetX: event.clientX - currentPosition.x,
+        offsetY: event.clientY - currentPosition.y,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setPreviewPosition(currentPosition);
+      event.preventDefault();
+    },
+    [getPreviewBounds, isMobile, previewPosition],
+  );
+
+  const handlePreviewPointerMove = React.useCallback(
+    (event: React.PointerEvent<HTMLElement>) => {
+      const dragState = dragRef.current;
+      if (!isMobile || !dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const nextPosition = clampFloatingPreviewPosition(
+        {
+          x: event.clientX - dragState.offsetX,
+          y: event.clientY - dragState.offsetY,
+        },
+        getPreviewBounds(),
+      );
+      setPreviewPosition(nextPosition);
+    },
+    [getPreviewBounds, isMobile],
+  );
+
+  const handlePreviewPointerEnd = React.useCallback((event: React.PointerEvent<HTMLElement>) => {
+    const dragState = dragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    dragRef.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }, []);
 
   return (
     <section className="meeting-chat-focus" aria-label={t('chat.focusEyebrow')}>
@@ -2087,19 +2188,37 @@ function MeetingChatFocus({
         />
       </div>
 
-      <aside className="chat-video-preview" aria-label={t('stage.thumbnail')}>
-        <div className="chat-video-preview-head">
-          <span>{previewTrackLabel}</span>
-          <button type="button" onClick={onBackToVideo}>
-            {t('stage.enlarge')}
-          </button>
-        </div>
+      <aside
+        ref={previewRef}
+        className={['chat-video-preview', isMobile ? 'is-mobile-floating' : ''].filter(Boolean).join(' ')}
+        aria-label={t('stage.thumbnail')}
+        style={
+          isMobile && previewPosition
+            ? {
+                left: `${previewPosition.x}px`,
+                top: `${previewPosition.y}px`,
+              }
+            : undefined
+        }
+        onPointerDown={handlePreviewPointerDown}
+        onPointerMove={handlePreviewPointerMove}
+        onPointerUp={handlePreviewPointerEnd}
+        onPointerCancel={handlePreviewPointerEnd}
+      >
+        {!isMobile ? (
+          <div className="chat-video-preview-head">
+            <span>{previewTrackLabel}</span>
+            <button type="button" onClick={onBackToVideo}>
+              {t('stage.enlarge')}
+            </button>
+          </div>
+        ) : null}
         {previewTrack ? (
           <ParticipantTile trackRef={previewTrack} className="chat-video-preview-tile" />
         ) : (
           <div className="chat-video-preview-empty">{t('stage.noVideo')}</div>
         )}
-        {tracks.length > 1 ? (
+        {!isMobile && tracks.length > 1 ? (
           <div className="chat-preview-strip" aria-label={t('stage.choose')}>
             {tracks.map((track) => {
               const key = getMeetingTrackSpotlightKey(track);
