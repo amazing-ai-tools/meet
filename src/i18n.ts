@@ -135,6 +135,18 @@ export type TranslationKey =
   | 'status.imageOnly'
   | 'status.linkCopied'
   | 'status.you'
+  | 'team.addMembers'
+  | 'team.inviteAllMembers'
+  | 'team.inviteNote'
+  | 'team.invitesPending'
+  | 'team.invitesSent'
+  | 'team.memberEmailsPlaceholder'
+  | 'team.membersDescription'
+  | 'team.membersSaved'
+  | 'team.membersTitle'
+  | 'team.noMembers'
+  | 'team.noMembersToInvite'
+  | 'team.schedule'
   | 'widget.closeVideo'
   | 'widget.contextMissing'
   | 'widget.fullRoom'
@@ -283,6 +295,18 @@ const pt: TranslationMap = {
   'status.imageOnly': 'Escolha uma imagem para o fundo.',
   'status.linkCopied': 'Link copiado',
   'status.you': 'Voce',
+  'team.addMembers': 'Adicionar membros',
+  'team.inviteAllMembers': 'Enviar convite para todos os membros ao criar a sala',
+  'team.inviteNote': 'Voce foi convidado para uma sala do time no amazing-ai meet.',
+  'team.invitesPending': 'Convites do time registrados. Configure SMTP para envio automatico.',
+  'team.invitesSent': 'Convites enviados para os membros do time.',
+  'team.memberEmailsPlaceholder': 'ana@empresa.com, joao@empresa.com',
+  'team.membersDescription': 'Adicione e-mails ao time. Eles poderao receber convites das salas persistentes.',
+  'team.membersSaved': 'Membros adicionados ao time.',
+  'team.membersTitle': 'Membros do time',
+  'team.noMembers': 'Nenhum membro por e-mail ainda.',
+  'team.noMembersToInvite': 'Sala criada. Adicione membros por e-mail para convidar o time.',
+  'team.schedule': 'Data do convite',
   'widget.closeVideo': 'Fechar video',
   'widget.contextMissing': 'Informe contextId na URL do widget.',
   'widget.fullRoom': 'Sala completa',
@@ -409,6 +433,18 @@ const en: TranslationMap = {
   'status.imageOnly': 'Choose an image for the background.',
   'status.linkCopied': 'Link copied',
   'status.you': 'You',
+  'team.addMembers': 'Add members',
+  'team.inviteAllMembers': 'Invite all members when creating the room',
+  'team.inviteNote': 'You were invited to a team room on amazing-ai meet.',
+  'team.invitesPending': 'Team invitations recorded. Configure SMTP for automatic delivery.',
+  'team.invitesSent': 'Invitations sent to team members.',
+  'team.memberEmailsPlaceholder': 'ana@company.com, joao@company.com',
+  'team.membersDescription': 'Add email addresses to the team. They can receive invitations for persistent rooms.',
+  'team.membersSaved': 'Members added to the team.',
+  'team.membersTitle': 'Team members',
+  'team.noMembers': 'No email members yet.',
+  'team.noMembersToInvite': 'Room created. Add email members to invite the team.',
+  'team.schedule': 'Invitation date',
   'widget.closeVideo': 'Close video',
   'widget.contextMissing': 'Add contextId to the widget URL.',
   'widget.fullRoom': 'Full room',
@@ -548,6 +584,18 @@ const fr: TranslationMap = {
   'status.imageOnly': 'Choisissez une image pour l’arriere-plan.',
   'status.linkCopied': 'Lien copie',
   'status.you': 'Vous',
+  'team.addMembers': 'Ajouter des membres',
+  'team.inviteAllMembers': 'Inviter tous les membres lors de la creation de la salle',
+  'team.inviteNote': 'Vous avez ete invite dans une salle d’equipe sur amazing-ai meet.',
+  'team.invitesPending': 'Invitations de l’equipe enregistrees. Configurez SMTP pour l’envoi automatique.',
+  'team.invitesSent': 'Invitations envoyees aux membres de l’equipe.',
+  'team.memberEmailsPlaceholder': 'ana@entreprise.com, joao@entreprise.com',
+  'team.membersDescription': 'Ajoutez des e-mails a l’equipe. Ils peuvent recevoir les invitations des salles persistantes.',
+  'team.membersSaved': 'Membres ajoutes a l’equipe.',
+  'team.membersTitle': 'Membres de l’equipe',
+  'team.noMembers': 'Aucun membre par e-mail pour le moment.',
+  'team.noMembersToInvite': 'Salle creee. Ajoutez des membres par e-mail pour inviter l’equipe.',
+  'team.schedule': 'Date d’invitation',
   'widget.closeVideo': 'Fermer la video',
   'widget.contextMissing': 'Ajoutez contextId a l’URL du widget.',
   'widget.fullRoom': 'Salle complete',

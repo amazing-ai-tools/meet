@@ -33,6 +33,7 @@ export type Team = {
   name: string;
   ownerIdentityId: string;
   memberIdentityIds: string[];
+  memberEmails: string[];
   createdAt: string;
 };
 

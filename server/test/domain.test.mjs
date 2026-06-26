@@ -8,6 +8,7 @@ import {
   createRoomInvitation,
   createTeam,
   createTeamRoom,
+  normalizeTeamMemberEmails,
   calculateParticipantHours,
   canHostControlParticipant,
   canSendChatMessage,
@@ -59,6 +60,42 @@ test('createTeamRoom creates a persistent room inside the team', () => {
   assert.equal(room.teamId, team.id);
   assert.equal(room.requiresLogin, true);
   assert.equal(room.hostIdentityId, owner.id);
+});
+
+test('createTeamRoom allows a Google user whose email is a team member', () => {
+  const owner = {
+    id: 'user_google_owner',
+    displayName: 'Grace Hopper',
+    email: 'grace@example.com',
+    provider: 'google',
+  };
+  const member = {
+    id: 'user_google_member',
+    displayName: 'Katherine Johnson',
+    email: 'member@example.com',
+    provider: 'google',
+  };
+
+  const team = {
+    ...createTeam(owner, 'Engineering'),
+    memberEmails: ['grace@example.com', 'member@example.com'],
+  };
+  const room = createTeamRoom(team, member, 'Architecture');
+
+  assert.equal(room.hostIdentityId, member.id);
+  assert.equal(room.teamId, team.id);
+});
+
+test('team member emails are normalized and deduplicated', () => {
+  assert.deepEqual(
+    normalizeTeamMemberEmails(' Ada@Example.com, bob@example.com\nada@example.com '),
+    ['ada@example.com', 'bob@example.com'],
+  );
+
+  assert.throws(
+    () => normalizeTeamMemberEmails('not-an-email'),
+    /valid email/,
+  );
 });
 
 test('host controls are limited to the room host', () => {

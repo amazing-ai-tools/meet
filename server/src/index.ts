@@ -10,8 +10,11 @@ import {
   createRoomInvitation,
   createTeam,
   createTeamRoom,
+  isTeamMember,
   normalizeWidgetContextId,
   type Identity,
+  type MeetingRoom,
+  type RoomInvitation,
 } from './domain.js';
 import {
   createGuestSession,
@@ -359,40 +362,16 @@ app.post('/api/rooms/:slug/invitations', withIdentity(true, async (request, resp
 
   const scheduledAt = readOptionalString(request.body?.scheduledAt);
   const note = readOptionalString(request.body?.note);
-  const invitations = [];
-  for (const email of emails) {
-    const invitation = await store.addRoomInvitation(createRoomInvitation(room, identity!, {
-      email,
-      scheduledAt,
-      note,
-    }));
-    try {
-      const delivery = await sendInvitationEmail(smtpConfig, {
-        invitation,
-        room,
-        inviter: identity!,
-        roomUrl: `${publicOrigin}/r/${room.slug}`,
-      });
-      invitations.push(delivery === 'sent'
-        ? await store.updateRoomInvitationDelivery(invitation.id, 'sent')
-        : invitation);
-    } catch (error) {
-      invitations.push(await store.updateRoomInvitationDelivery(
-        invitation.id,
-        'failed',
-        (error as Error).message.slice(0, 300),
-      ));
-    }
-  }
+  const invitations = await createAndDeliverRoomInvitations(room, identity!, emails, { scheduledAt, note });
 
   response.status(201).json({
     invitations,
-    smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM),
+    smtpConfigured: isSmtpConfigured(),
   });
 }));
 
 app.get('/api/teams', withIdentity(true, (request, response, identity) => {
-  response.json({ teams: store.listTeamsForIdentity(identity!.id) });
+  response.json({ teams: store.listTeamsForIdentity(identity!) });
 }));
 
 app.post('/api/teams', withIdentity(true, async (request, response, identity) => {
@@ -400,20 +379,50 @@ app.post('/api/teams', withIdentity(true, async (request, response, identity) =>
   response.status(201).json({ team });
 }));
 
+app.post('/api/teams/:teamId/members', withIdentity(true, async (request, response, identity) => {
+  const team = store.findTeam(request.params.teamId);
+  if (!team || !isTeamMember(team, identity!)) {
+    response.status(404).json({ error: 'Team not found' });
+    return;
+  }
+
+  const emails = readEmailList(request.body?.emails);
+  if (emails.length === 0) {
+    response.status(400).json({ error: 'At least one email is required' });
+    return;
+  }
+
+  const updatedTeam = await store.addTeamMemberEmails(team.id, emails);
+  response.json({ team: updatedTeam });
+}));
+
 app.post('/api/teams/:teamId/rooms', withIdentity(true, async (request, response, identity) => {
   const team = store.findTeam(request.params.teamId);
-  if (!team) {
+  if (!team || !isTeamMember(team, identity!)) {
     response.status(404).json({ error: 'Team not found' });
     return;
   }
 
   const room = await store.addRoom(createTeamRoom(team, identity!, readString(request.body?.title, 'Sala persistente')));
-  response.status(201).json({ room, url: `${publicOrigin}/r/${room.slug}` });
+  const teamMemberEmails = team.memberEmails.filter((email) => email !== identity!.email?.toLowerCase());
+  const invitations = request.body?.inviteTeamMembers
+    ? await createAndDeliverRoomInvitations(room, identity!, teamMemberEmails, {
+        scheduledAt: readOptionalString(request.body?.scheduledAt),
+        note: readOptionalString(request.body?.note),
+      })
+    : [];
+
+  response.status(201).json({
+    room,
+    url: `${publicOrigin}/r/${room.slug}`,
+    invitations,
+    smtpConfigured: isSmtpConfigured(),
+  });
 }));
 
 app.get('/api/teams/:teamId/rooms', withIdentity(true, (request, response, identity) => {
   const team = store.findTeam(request.params.teamId);
-  if (!team || !team.memberIdentityIds.includes(identity!.id)) {
+  if (!team || !isTeamMember(team, identity!)) {
     response.status(404).json({ error: 'Team not found' });
     return;
   }
@@ -474,6 +483,46 @@ async function createAndSaveGuest(displayName: string): Promise<Identity> {
   const session = createGuestSession(displayName, authConfig);
   await store.upsertIdentity(session.identity);
   return session.identity;
+}
+
+async function createAndDeliverRoomInvitations(
+  room: MeetingRoom,
+  inviter: Identity,
+  emails: string[],
+  options: { scheduledAt?: string; note?: string },
+): Promise<RoomInvitation[]> {
+  const invitations: RoomInvitation[] = [];
+
+  for (const email of emails) {
+    const invitation = await store.addRoomInvitation(createRoomInvitation(room, inviter, {
+      email,
+      scheduledAt: options.scheduledAt,
+      note: options.note,
+    }));
+    try {
+      const delivery = await sendInvitationEmail(smtpConfig, {
+        invitation,
+        room,
+        inviter,
+        roomUrl: `${publicOrigin}/r/${room.slug}`,
+      });
+      invitations.push(delivery === 'sent'
+        ? await store.updateRoomInvitationDelivery(invitation.id, 'sent')
+        : invitation);
+    } catch (error) {
+      invitations.push(await store.updateRoomInvitationDelivery(
+        invitation.id,
+        'failed',
+        (error as Error).message.slice(0, 300),
+      ));
+    }
+  }
+
+  return invitations;
+}
+
+function isSmtpConfigured(): boolean {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM);
 }
 
 function signInMemoryGuest(identity: Identity): string {

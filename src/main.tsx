@@ -46,6 +46,7 @@ import { QRCodeSVG } from 'qrcode.react';
 
 import {
   clearSession,
+  addTeamMembers,
   createGoogleSession,
   createGuestSession,
   createInstantRoom,
@@ -326,6 +327,10 @@ function Dashboard({
   const [meetingTitle, setMeetingTitle] = React.useState(`${t('dashboard.newMeeting')} amazing-ai meet`);
   const [teamName, setTeamName] = React.useState('Produto Amazing');
   const [roomTitle, setRoomTitle] = React.useState(t('dashboard.roomTitle'));
+  const [memberEmails, setMemberEmails] = React.useState('');
+  const [inviteTeamMembers, setInviteTeamMembers] = React.useState(true);
+  const [teamRoomSchedule, setTeamRoomSchedule] = React.useState('');
+  const [teamInviteStatus, setTeamInviteStatus] = React.useState('');
   const [teams, setTeams] = React.useState<Team[]>([]);
   const [rooms, setRooms] = React.useState<MeetingRoom[]>([]);
   const [selectedTeamId, setSelectedTeamId] = React.useState('');
@@ -360,6 +365,8 @@ function Dashboard({
       .then(({ rooms: loadedRooms }) => setRooms(loadedRooms))
       .catch((err: Error) => setError(err.message));
   }, [selectedTeamId]);
+
+  const selectedTeam = teams.find((team) => team.id === selectedTeamId);
 
   const startInstantMeeting = async () => {
     setBusy(true);
@@ -396,6 +403,26 @@ function Dashboard({
     }
   };
 
+  const saveTeamMembers = async () => {
+    if (!selectedTeamId) {
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setTeamInviteStatus('');
+    try {
+      const { team } = await addTeamMembers(selectedTeamId, memberEmails);
+      setTeams((current) => current.map((saved) => (saved.id === team.id ? team : saved)));
+      setMemberEmails('');
+      setTeamInviteStatus(t('team.membersSaved'));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const addTeamRoom = async () => {
     if (!selectedTeamId) {
       return;
@@ -403,9 +430,19 @@ function Dashboard({
 
     setBusy(true);
     setError('');
+    setTeamInviteStatus('');
     try {
-      const { room } = await createTeamRoom(selectedTeamId, roomTitle);
+      const { room, invitations, smtpConfigured } = await createTeamRoom(selectedTeamId, roomTitle, {
+        inviteTeamMembers,
+        scheduledAt: teamRoomSchedule ? new Date(teamRoomSchedule).toISOString() : undefined,
+        note: t('team.inviteNote'),
+      });
       setRooms((current) => [room, ...current]);
+      if (inviteTeamMembers) {
+        setTeamInviteStatus(invitations.length > 0
+          ? smtpConfigured ? t('team.invitesSent') : t('team.invitesPending')
+          : t('team.noMembersToInvite'));
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -515,6 +552,29 @@ function Dashboard({
               ))}
             </div>
             <div className="room-list">
+              <div className="team-members-card">
+                <div>
+                  <strong>{t('team.membersTitle')}</strong>
+                  <p>{t('team.membersDescription')}</p>
+                </div>
+                <textarea
+                  value={memberEmails}
+                  onChange={(event) => setMemberEmails(event.target.value)}
+                  placeholder={t('team.memberEmailsPlaceholder')}
+                  rows={3}
+                />
+                <button type="button" onClick={saveTeamMembers} disabled={busy || !memberEmails.trim()}>
+                  <UserPlus size={16} />
+                  {t('team.addMembers')}
+                </button>
+                {selectedTeam?.memberEmails?.length ? (
+                  <div className="team-member-list" aria-label={t('team.membersTitle')}>
+                    {selectedTeam.memberEmails.map((email) => <span key={email}>{email}</span>)}
+                  </div>
+                ) : (
+                  <p className="team-empty-note">{t('team.noMembers')}</p>
+                )}
+              </div>
               <div className="team-builder compact">
                 <input value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} />
                 <button onClick={addTeamRoom} disabled={busy}>
@@ -522,6 +582,25 @@ function Dashboard({
                   {t('dashboard.room')}
                 </button>
               </div>
+              <div className="team-room-options">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={inviteTeamMembers}
+                    onChange={(event) => setInviteTeamMembers(event.target.checked)}
+                  />
+                  {t('team.inviteAllMembers')}
+                </label>
+                <label>
+                  {t('team.schedule')}
+                  <input
+                    type="datetime-local"
+                    value={teamRoomSchedule}
+                    onChange={(event) => setTeamRoomSchedule(event.target.value)}
+                  />
+                </label>
+              </div>
+              {teamInviteStatus && <p className="team-invite-status">{teamInviteStatus}</p>}
               {rooms.map((room) => (
                 <article key={room.id}>
                   <div>

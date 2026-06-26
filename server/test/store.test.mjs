@@ -145,3 +145,50 @@ test('store exposes persistent marketing stats for landing counters', async () =
 
   await rm(dir, { recursive: true, force: true });
 });
+
+test('store persists team member emails without duplicates', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'meetteams-store-'));
+  const store = new JsonStore(join(dir, 'state.json'));
+  const host = {
+    id: 'google_host',
+    displayName: 'Host User',
+    email: 'host@example.com',
+    provider: 'google',
+  };
+  const team = createTeam(host, 'Product Team');
+
+  await store.load();
+  await store.addTeam(team);
+  const updated = await store.addTeamMemberEmails(team.id, ['Alice@Example.com', 'alice@example.com', 'bob@example.com']);
+
+  assert.deepEqual(updated.memberEmails, ['host@example.com', 'alice@example.com', 'bob@example.com']);
+  assert.deepEqual(store.findTeam(team.id).memberEmails, updated.memberEmails);
+
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('store lists teams for Google identities added by email', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'meetteams-store-'));
+  const store = new JsonStore(join(dir, 'state.json'));
+  const host = {
+    id: 'google_host',
+    displayName: 'Host User',
+    email: 'host@example.com',
+    provider: 'google',
+  };
+  const member = {
+    id: 'google_member',
+    displayName: 'Member User',
+    email: 'member@example.com',
+    provider: 'google',
+  };
+  const team = createTeam(host, 'Product Team');
+
+  await store.load();
+  await store.addTeam(team);
+  await store.addTeamMemberEmails(team.id, ['member@example.com']);
+
+  assert.equal(store.listTeamsForIdentity(member).length, 1);
+
+  await rm(dir, { recursive: true, force: true });
+});

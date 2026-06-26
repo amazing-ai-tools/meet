@@ -204,10 +204,21 @@ export async function createTeam(name: string): Promise<{ team: Team }> {
   });
 }
 
-export async function createTeamRoom(teamId: string, title: string): Promise<{ room: MeetingRoom; url: string }> {
-  return api<{ room: MeetingRoom; url: string }>(`/teams/${teamId}/rooms`, {
+export async function addTeamMembers(teamId: string, emails: string): Promise<{ team: Team }> {
+  return api<{ team: Team }>(`/teams/${teamId}/members`, {
     method: 'POST',
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ emails }),
+  });
+}
+
+export async function createTeamRoom(
+  teamId: string,
+  title: string,
+  options: { inviteTeamMembers?: boolean; scheduledAt?: string; note?: string } = {},
+): Promise<{ room: MeetingRoom; url: string; invitations: RoomInvitation[]; smtpConfigured: boolean }> {
+  return api<{ room: MeetingRoom; url: string; invitations: RoomInvitation[]; smtpConfigured: boolean }>(`/teams/${teamId}/rooms`, {
+    method: 'POST',
+    body: JSON.stringify({ title, ...options }),
   });
 }
 

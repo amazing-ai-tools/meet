@@ -28,6 +28,7 @@ export type Team = {
   name: string;
   ownerIdentityId: string;
   memberIdentityIds: string[];
+  memberEmails: string[];
   createdAt: string;
 };
 
@@ -153,8 +154,21 @@ export function createTeam(owner: Identity, name: string): Team {
     name: normalizeRoomTitle(name),
     ownerIdentityId: owner.id,
     memberIdentityIds: [owner.id],
+    memberEmails: owner.email ? [normalizeEmail(owner.email)] : [],
     createdAt: new Date().toISOString(),
   };
+}
+
+export function normalizeTeamMemberEmails(input: string | string[]): string[] {
+  const rawEmails = Array.isArray(input)
+    ? input
+    : input.split(/[\s,;]+/g);
+  const normalizedEmails = rawEmails
+    .map((email) => email.trim())
+    .filter(Boolean)
+    .map(normalizeEmail);
+
+  return [...new Set(normalizedEmails)];
 }
 
 export function createTeamRoom(team: Team, host: Identity, title: string): MeetingRoom {
@@ -162,7 +176,7 @@ export function createTeamRoom(team: Team, host: Identity, title: string): Meeti
     throw new Error('Google login is required to create a team room');
   }
 
-  if (!team.memberIdentityIds.includes(host.id)) {
+  if (!isTeamMember(team, host)) {
     throw new Error('Only team members can create rooms in this team');
   }
 
@@ -176,6 +190,11 @@ export function createTeamRoom(team: Team, host: Identity, title: string): Meeti
     teamId: team.id,
     createdAt: new Date().toISOString(),
   };
+}
+
+export function isTeamMember(team: Team, identity: Identity): boolean {
+  return team.memberIdentityIds.includes(identity.id)
+    || Boolean(identity.email && team.memberEmails.includes(normalizeEmail(identity.email)));
 }
 
 export function createParticipant(room: MeetingRoom, identity: Identity): MeetingParticipant {

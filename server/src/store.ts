@@ -13,7 +13,7 @@ import type {
   Team,
   WidgetRoomContext,
 } from './domain.js';
-import { calculateParticipantHours } from './domain.js';
+import { calculateParticipantHours, isTeamMember, normalizeTeamMemberEmails } from './domain.js';
 
 export type RoomChatEvent =
   | { type: 'message'; roomId: string; message: ChatMessage }
@@ -54,6 +54,10 @@ export class JsonStore {
     try {
       const raw = await readFile(this.filePath, 'utf8');
       this.state = { ...structuredClone(emptyState), ...JSON.parse(raw) };
+      this.state.teams = this.state.teams.map((team) => ({
+        ...team,
+        memberEmails: normalizeTeamMemberEmails(team.memberEmails || []),
+      }));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         throw error;
@@ -83,8 +87,12 @@ export class JsonStore {
     return this.state.teams.find((team) => team.id === id);
   }
 
-  listTeamsForIdentity(identityId: string): Team[] {
-    return this.state.teams.filter((team) => team.memberIdentityIds.includes(identityId));
+  listTeamsForIdentity(identity: Identity | string): Team[] {
+    if (typeof identity === 'string') {
+      return this.state.teams.filter((team) => team.memberIdentityIds.includes(identity));
+    }
+
+    return this.state.teams.filter((team) => isTeamMember(team, identity));
   }
 
   listRoomsForTeam(teamId: string): MeetingRoom[] {
@@ -162,9 +170,23 @@ export class JsonStore {
   }
 
   async addTeam(team: Team): Promise<Team> {
-    this.state.teams.push(team);
+    this.state.teams.push({
+      ...team,
+      memberEmails: normalizeTeamMemberEmails(team.memberEmails || []),
+    });
     await this.save();
     return team;
+  }
+
+  async addTeamMemberEmails(teamId: string, emails: string[]): Promise<Team> {
+    const team = this.state.teams.find((saved) => saved.id === teamId);
+    if (!team) {
+      throw new Error('Team not found');
+    }
+
+    team.memberEmails = normalizeTeamMemberEmails([...(team.memberEmails || []), ...emails]);
+    await this.save();
+    return structuredClone(team);
   }
 
   async addParticipant(participant: MeetingParticipant): Promise<MeetingParticipant> {
