@@ -114,6 +114,16 @@ export type TranslationKey =
   | 'nav.meetings'
   | 'nav.rooms'
   | 'nav.teams'
+  | 'rooms.allTitle'
+  | 'rooms.createDescription'
+  | 'rooms.createRoom'
+  | 'rooms.createTitle'
+  | 'rooms.description'
+  | 'rooms.emptyAll'
+  | 'rooms.emptySelected'
+  | 'rooms.emptyTeams'
+  | 'rooms.selectedTeamTitle'
+  | 'rooms.title'
   | 'share.copied'
   | 'share.copy'
   | 'stats.hours'
@@ -210,8 +220,8 @@ const pt: TranslationMap = {
   'dashboard.room': 'Sala',
   'dashboard.roomTitle': 'Sala diaria',
   'dashboard.teamName': 'Nome do time',
-  'dashboard.teamsDescription': 'Entre com sua conta Google para criar espacos de trabalho e manter salas fixas por equipe.',
-  'dashboard.teamsTitle': 'Times e salas persistentes',
+  'dashboard.teamsDescription': 'Entre com sua conta Google para criar equipes e adicionar membros por e-mail.',
+  'dashboard.teamsTitle': 'Equipes',
   'devices.camera': 'Camera',
   'devices.cameraError': 'Nao foi possivel trocar a camera.',
   'devices.cameraOff': 'Camera desligada',
@@ -273,7 +283,17 @@ const pt: TranslationMap = {
   'nav.home': 'Ir para inicio',
   'nav.meetings': 'Reunioes',
   'nav.rooms': 'Salas',
-  'nav.teams': 'Times',
+  'nav.teams': 'Equipes',
+  'rooms.allTitle': 'Todas as salas persistentes',
+  'rooms.createDescription': 'Crie uma sala fixa para a equipe selecionada e envie convites para todos os membros quando fizer sentido.',
+  'rooms.createRoom': 'Criar sala',
+  'rooms.createTitle': 'Nova sala persistente',
+  'rooms.description': 'Veja as salas por equipe e as salas persistentes criadas nos seus espacos de trabalho.',
+  'rooms.emptyAll': 'Nenhuma sala persistente criada ainda.',
+  'rooms.emptySelected': 'Esta equipe ainda nao tem salas persistentes.',
+  'rooms.emptyTeams': 'Crie uma equipe antes de adicionar salas persistentes.',
+  'rooms.selectedTeamTitle': 'Salas desta equipe',
+  'rooms.title': 'Salas persistentes',
   'share.copied': 'Link copiado',
   'share.copy': 'Copiar link',
   'stats.hours': 'horas de reuniao',
@@ -360,8 +380,8 @@ const en: TranslationMap = {
   'dashboard.room': 'Room',
   'dashboard.roomTitle': 'Daily room',
   'dashboard.teamName': 'Team name',
-  'dashboard.teamsDescription': 'Sign in with your Google account to create workspaces and keep fixed rooms per team.',
-  'dashboard.teamsTitle': 'Teams and persistent rooms',
+  'dashboard.teamsDescription': 'Sign in with your Google account to create teams and add members by email.',
+  'dashboard.teamsTitle': 'Teams',
   'devices.cameraError': 'Could not switch camera.',
   'devices.cameraOff': 'Camera off',
   'devices.cameraOn': 'Camera on',
@@ -420,6 +440,17 @@ const en: TranslationMap = {
   'nav.home': 'Go home',
   'nav.meetings': 'Meetings',
   'nav.rooms': 'Rooms',
+  'nav.teams': 'Teams',
+  'rooms.allTitle': 'All persistent rooms',
+  'rooms.createDescription': 'Create a fixed room for the selected team and invite every member when it is useful.',
+  'rooms.createRoom': 'Create room',
+  'rooms.createTitle': 'New persistent room',
+  'rooms.description': 'Browse rooms by team and the persistent rooms created in your workspaces.',
+  'rooms.emptyAll': 'No persistent rooms have been created yet.',
+  'rooms.emptySelected': 'This team does not have persistent rooms yet.',
+  'rooms.emptyTeams': 'Create a team before adding persistent rooms.',
+  'rooms.selectedTeamTitle': 'Rooms for this team',
+  'rooms.title': 'Persistent rooms',
   'share.copied': 'Link copied',
   'share.copy': 'Copy link',
   'stats.hours': 'meeting hours',
@@ -510,8 +541,8 @@ const fr: TranslationMap = {
   'dashboard.room': 'Salle',
   'dashboard.roomTitle': 'Salle quotidienne',
   'dashboard.teamName': 'Nom de l’equipe',
-  'dashboard.teamsDescription': 'Entrez avec votre compte Google pour creer des espaces de travail et garder des salles fixes par equipe.',
-  'dashboard.teamsTitle': 'Equipes et salles persistantes',
+  'dashboard.teamsDescription': 'Entrez avec votre compte Google pour creer des equipes et ajouter des membres par e-mail.',
+  'dashboard.teamsTitle': 'Equipes',
   'devices.cameraError': 'Impossible de changer de camera.',
   'devices.cameraOff': 'Camera desactivee',
   'devices.cameraOn': 'Camera activee',
@@ -571,6 +602,16 @@ const fr: TranslationMap = {
   'nav.meetings': 'Reunions',
   'nav.rooms': 'Salles',
   'nav.teams': 'Equipes',
+  'rooms.allTitle': 'Toutes les salles persistantes',
+  'rooms.createDescription': 'Creez une salle fixe pour l equipe selectionnee et envoyez des invitations a tous les membres quand c est utile.',
+  'rooms.createRoom': 'Creer une salle',
+  'rooms.createTitle': 'Nouvelle salle persistante',
+  'rooms.description': 'Consultez les salles par equipe et les salles persistantes creees dans vos espaces de travail.',
+  'rooms.emptyAll': 'Aucune salle persistante n a encore ete creee.',
+  'rooms.emptySelected': 'Cette equipe n a pas encore de salles persistantes.',
+  'rooms.emptyTeams': 'Creez une equipe avant d ajouter des salles persistantes.',
+  'rooms.selectedTeamTitle': 'Salles de cette equipe',
+  'rooms.title': 'Salles persistantes',
   'share.copied': 'Lien copie',
   'share.copy': 'Copier le lien',
   'stats.hours': 'heures de reunion',

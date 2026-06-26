@@ -101,6 +101,7 @@ import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant 
 import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
 import { createTranslator, resolveLocale, type AppLocale } from './i18n';
 import { readWidgetEmbedParams } from './widgetEmbed';
+import { resolveDashboardSection, type DashboardSection } from './dashboardSections';
 import {
   getChatPreviewSpotlightKey,
   getMobileStageSpotlightKey,
@@ -184,6 +185,7 @@ function ensureBugZeroWidget() {
 function App() {
   const [session, setSession] = React.useState<Session | undefined>(() => loadSession());
   const [route, setRoute] = React.useState(() => window.location.pathname);
+  const [dashboardSection, setDashboardSection] = React.useState<DashboardSection>('meetings');
   const [googleClientId, setGoogleClientId] = React.useState(() => import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
   const [locale] = React.useState<AppLocale>(browserLocale);
   const translate = React.useMemo(() => createTranslator(locale), [locale]);
@@ -211,6 +213,11 @@ function App() {
     setRoute(path);
   };
 
+  const showDashboardSection = (section: DashboardSection) => {
+    setDashboardSection(resolveDashboardSection(section));
+    navigate('/');
+  };
+
   const logout = () => {
     clearSession();
     setSession(undefined);
@@ -235,7 +242,12 @@ function App() {
       <WidgetRoute />
     ) : (
     <main className={roomMatch ? 'product-shell meeting-shell' : 'product-shell'}>
-      <Sidebar session={session} onNavigate={navigate} onLogout={logout} />
+      <Sidebar
+        session={session}
+        activeSection={dashboardSection}
+        onDashboardSection={showDashboardSection}
+        onLogout={logout}
+      />
       {roomMatch ? (
         <MeetingRoute
           slug={roomMatch[1]}
@@ -248,6 +260,7 @@ function App() {
         <Dashboard
           session={session}
           googleClientId={googleClientId}
+          activeSection={dashboardSection}
           onSession={setSession}
           onNavigate={navigate}
         />
@@ -261,31 +274,42 @@ function App() {
 
 function Sidebar({
   session,
-  onNavigate,
+  activeSection,
+  onDashboardSection,
   onLogout,
 }: {
   session?: Session;
-  onNavigate: (path: string) => void;
+  activeSection: DashboardSection;
+  onDashboardSection: (section: DashboardSection) => void;
   onLogout: () => void;
 }) {
   const t = useT();
   return (
     <aside className="side-rail">
-      <button className="brand" onClick={() => onNavigate('/')} aria-label={t('nav.home')}>
+      <button className="brand" onClick={() => onDashboardSection('meetings')} aria-label={t('nav.home')}>
         <span className="brand-mark">M</span>
         <span>{appName}</span>
       </button>
 
       <nav className="rail-nav" aria-label={t('nav.home')}>
-        <button onClick={() => onNavigate('/')}>
+        <button
+          className={activeSection === 'meetings' ? 'active' : ''}
+          onClick={() => onDashboardSection('meetings')}
+        >
           <Video size={18} />
           {t('nav.meetings')}
         </button>
-        <button onClick={() => onNavigate('/')}>
+        <button
+          className={activeSection === 'teams' ? 'active' : ''}
+          onClick={() => onDashboardSection('teams')}
+        >
           <Building2 size={18} />
           {t('nav.teams')}
         </button>
-        <button onClick={() => onNavigate('/')}>
+        <button
+          className={activeSection === 'rooms' ? 'active' : ''}
+          onClick={() => onDashboardSection('rooms')}
+        >
           <CalendarClock size={18} />
           {t('nav.rooms')}
         </button>
@@ -314,11 +338,13 @@ function Sidebar({
 function Dashboard({
   session,
   googleClientId,
+  activeSection,
   onSession,
   onNavigate,
 }: {
   session?: Session;
   googleClientId: string;
+  activeSection: DashboardSection;
   onSession: (session: Session) => void;
   onNavigate: (path: string) => void;
 }) {
@@ -333,6 +359,7 @@ function Dashboard({
   const [teamInviteStatus, setTeamInviteStatus] = React.useState('');
   const [teams, setTeams] = React.useState<Team[]>([]);
   const [rooms, setRooms] = React.useState<MeetingRoom[]>([]);
+  const [roomsByTeam, setRoomsByTeam] = React.useState<Record<string, MeetingRoom[]>>({});
   const [selectedTeamId, setSelectedTeamId] = React.useState('');
   const [error, setError] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -341,6 +368,7 @@ function Dashboard({
     if (!session || session.identity.provider !== 'google') {
       setTeams([]);
       setRooms([]);
+      setRoomsByTeam({});
       return;
     }
 
@@ -349,9 +377,17 @@ function Dashboard({
         setTeams(loadedTeams);
         const firstTeamId = loadedTeams[0]?.id || '';
         setSelectedTeamId(firstTeamId);
-        return firstTeamId ? listTeamRooms(firstTeamId) : Promise.resolve({ rooms: [] });
+        return Promise.all(loadedTeams.map(async (team) => {
+          const { rooms: teamRooms } = await listTeamRooms(team.id);
+          return [team.id, teamRooms] as const;
+        }));
       })
-      .then(({ rooms: loadedRooms }) => setRooms(loadedRooms))
+      .then((entries) => {
+        const nextRoomsByTeam = Object.fromEntries(entries);
+        setRoomsByTeam(nextRoomsByTeam);
+        const firstTeamId = Object.keys(nextRoomsByTeam)[0] || '';
+        setRooms(firstTeamId ? nextRoomsByTeam[firstTeamId] || [] : []);
+      })
       .catch((err: Error) => setError(err.message));
   }, [session]);
 
@@ -362,11 +398,18 @@ function Dashboard({
     }
 
     listTeamRooms(selectedTeamId)
-      .then(({ rooms: loadedRooms }) => setRooms(loadedRooms))
+      .then(({ rooms: loadedRooms }) => {
+        setRooms(loadedRooms);
+        setRoomsByTeam((current) => ({ ...current, [selectedTeamId]: loadedRooms }));
+      })
       .catch((err: Error) => setError(err.message));
   }, [selectedTeamId]);
 
   const selectedTeam = teams.find((team) => team.id === selectedTeamId);
+  const persistentRooms = teams.flatMap((team) => (roomsByTeam[team.id] || []).map((room) => ({
+    room,
+    team,
+  })));
 
   const startInstantMeeting = async () => {
     setBusy(true);
@@ -438,6 +481,10 @@ function Dashboard({
         note: t('team.inviteNote'),
       });
       setRooms((current) => [room, ...current]);
+      setRoomsByTeam((current) => ({
+        ...current,
+        [selectedTeamId]: [room, ...(current[selectedTeamId] || [])],
+      }));
       if (inviteTeamMembers) {
         setTeamInviteStatus(invitations.length > 0
           ? smtpConfigured ? t('team.invitesSent') : t('team.invitesPending')
@@ -462,158 +509,231 @@ function Dashboard({
 
       {error && <div className="error-banner">{error}</div>}
 
-      <section className="command-band">
-        <div className="command-copy">
-          <Sparkles size={22} />
-          <div>
-            <h2>{t('dashboard.instantTitle')}</h2>
-            <p>{t('dashboard.instantDescription')}</p>
-          </div>
-        </div>
-        <div className="command-form">
-          {!session && (
-            <input
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              placeholder={t('dashboard.name')}
-              aria-label={t('dashboard.name')}
-            />
-          )}
-          <input
-            value={meetingTitle}
-            onChange={(event) => setMeetingTitle(event.target.value)}
-            placeholder={t('dashboard.meetingTitle')}
-            aria-label={t('dashboard.meetingTitle')}
-          />
-          <button className="primary-action" onClick={startInstantMeeting} disabled={busy}>
-            <Plus size={18} />
-            {t('dashboard.newMeeting')}
-          </button>
-        </div>
-      </section>
-
-      <MarketingStatsBand />
-
-      <section className="meeting-preview" aria-label="Preview de reuniao">
-        <div className="video-grid-preview">
-          {['Ana', 'Bruno', 'Carla', 'Diego'].map((name, index) => (
-            <div className="video-tile" key={name}>
-              <span>{name.slice(0, 1)}</span>
-              <small>{name}</small>
-              {index === 0 && <strong>Host</strong>}
+      {activeSection === 'meetings' && (
+        <>
+          <section className="command-band">
+            <div className="command-copy">
+              <Sparkles size={22} />
+              <div>
+                <h2>{t('dashboard.instantTitle')}</h2>
+                <p>{t('dashboard.instantDescription')}</p>
+              </div>
             </div>
-          ))}
-        </div>
-        <div className="preview-panel">
-          <h2>{t('dashboard.previewTitle')}</h2>
-          <ul>
-            <li><Mic size={16} /> Live Áudio e Vídeo</li>
-            <li><MonitorUp size={16} /> Compartilhamento de tela</li>
-            <li><Users size={16} /> Participantes e chat da reuniao</li>
-            <li><Shield size={16} /> Host pode moderar participantes</li>
-          </ul>
-        </div>
-      </section>
-
-      <section className="teams-section">
-        <div className="section-head">
-          <div>
-            <h2>{t('dashboard.teamsTitle')}</h2>
-            <p>{t('dashboard.teamsDescription')}</p>
-          </div>
-          {session?.identity.provider !== 'google' && <span className="login-required">{t('app.googleRequired')}</span>}
-        </div>
-
-        <div className="team-builder">
-          <input
-            value={teamName}
-            onChange={(event) => setTeamName(event.target.value)}
-            placeholder={t('dashboard.teamName')}
-            disabled={session?.identity.provider !== 'google'}
-          />
-          <button onClick={addTeam} disabled={busy || session?.identity.provider !== 'google'}>
-            <UserPlus size={17} />
-            {t('dashboard.createTeam')}
-          </button>
-        </div>
-
-        {teams.length > 0 && (
-          <div className="team-board">
-            <div className="team-list">
-              {teams.map((team) => (
-                <button
-                  className={team.id === selectedTeamId ? 'selected' : ''}
-                  key={team.id}
-                  onClick={() => setSelectedTeamId(team.id)}
-                >
-                  <Building2 size={17} />
-                  {team.name}
-                </button>
-              ))}
-            </div>
-            <div className="room-list">
-              <div className="team-members-card">
-                <div>
-                  <strong>{t('team.membersTitle')}</strong>
-                  <p>{t('team.membersDescription')}</p>
-                </div>
-                <textarea
-                  value={memberEmails}
-                  onChange={(event) => setMemberEmails(event.target.value)}
-                  placeholder={t('team.memberEmailsPlaceholder')}
-                  rows={3}
+            <div className="command-form">
+              {!session && (
+                <input
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder={t('dashboard.name')}
+                  aria-label={t('dashboard.name')}
                 />
-                <button type="button" onClick={saveTeamMembers} disabled={busy || !memberEmails.trim()}>
-                  <UserPlus size={16} />
-                  {t('team.addMembers')}
-                </button>
-                {selectedTeam?.memberEmails?.length ? (
-                  <div className="team-member-list" aria-label={t('team.membersTitle')}>
-                    {selectedTeam.memberEmails.map((email) => <span key={email}>{email}</span>)}
-                  </div>
-                ) : (
-                  <p className="team-empty-note">{t('team.noMembers')}</p>
-                )}
-              </div>
-              <div className="team-builder compact">
-                <input value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} />
-                <button onClick={addTeamRoom} disabled={busy}>
-                  <Plus size={16} />
-                  {t('dashboard.room')}
-                </button>
-              </div>
-              <div className="team-room-options">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={inviteTeamMembers}
-                    onChange={(event) => setInviteTeamMembers(event.target.checked)}
-                  />
-                  {t('team.inviteAllMembers')}
-                </label>
-                <label>
-                  {t('team.schedule')}
-                  <input
-                    type="datetime-local"
-                    value={teamRoomSchedule}
-                    onChange={(event) => setTeamRoomSchedule(event.target.value)}
-                  />
-                </label>
-              </div>
-              {teamInviteStatus && <p className="team-invite-status">{teamInviteStatus}</p>}
-              {rooms.map((room) => (
-                <article key={room.id}>
-                  <div>
-                    <h3>{room.title}</h3>
-                    <p>Link: /r/{room.slug}</p>
-                  </div>
-                  <button onClick={() => onNavigate(`/r/${room.slug}`)}>{t('dashboard.join')}</button>
-                </article>
+              )}
+              <input
+                value={meetingTitle}
+                onChange={(event) => setMeetingTitle(event.target.value)}
+                placeholder={t('dashboard.meetingTitle')}
+                aria-label={t('dashboard.meetingTitle')}
+              />
+              <button className="primary-action" onClick={startInstantMeeting} disabled={busy}>
+                <Plus size={18} />
+                {t('dashboard.newMeeting')}
+              </button>
+            </div>
+          </section>
+
+          <MarketingStatsBand />
+
+          <section className="meeting-preview" aria-label="Preview de reuniao">
+            <div className="video-grid-preview">
+              {['Ana', 'Bruno', 'Carla', 'Diego'].map((name, index) => (
+                <div className="video-tile" key={name}>
+                  <span>{name.slice(0, 1)}</span>
+                  <small>{name}</small>
+                  {index === 0 && <strong>Host</strong>}
+                </div>
               ))}
             </div>
+            <div className="preview-panel">
+              <h2>{t('dashboard.previewTitle')}</h2>
+              <ul>
+                <li><Mic size={16} /> Live Áudio e Vídeo</li>
+                <li><MonitorUp size={16} /> Compartilhamento de tela</li>
+                <li><Users size={16} /> Participantes e chat da reuniao</li>
+                <li><Shield size={16} /> Host pode moderar participantes</li>
+              </ul>
+            </div>
+          </section>
+        </>
+      )}
+
+      {activeSection === 'teams' && (
+        <section className="teams-section">
+          <div className="section-head">
+            <div>
+              <h2>{t('dashboard.teamsTitle')}</h2>
+              <p>{t('dashboard.teamsDescription')}</p>
+            </div>
+            {session?.identity.provider !== 'google' && <span className="login-required">{t('app.googleRequired')}</span>}
           </div>
-        )}
-      </section>
+
+          <div className="team-builder">
+            <input
+              value={teamName}
+              onChange={(event) => setTeamName(event.target.value)}
+              placeholder={t('dashboard.teamName')}
+              disabled={session?.identity.provider !== 'google'}
+            />
+            <button onClick={addTeam} disabled={busy || session?.identity.provider !== 'google'}>
+              <UserPlus size={17} />
+              {t('dashboard.createTeam')}
+            </button>
+          </div>
+
+          {teams.length > 0 && (
+            <div className="team-board">
+              <div className="team-list">
+                {teams.map((team) => (
+                  <button
+                    className={team.id === selectedTeamId ? 'selected' : ''}
+                    key={team.id}
+                    onClick={() => setSelectedTeamId(team.id)}
+                  >
+                    <Building2 size={17} />
+                    {team.name}
+                  </button>
+                ))}
+              </div>
+              <div className="room-list">
+                <div className="team-members-card">
+                  <div>
+                    <strong>{t('team.membersTitle')}</strong>
+                    <p>{t('team.membersDescription')}</p>
+                  </div>
+                  <textarea
+                    value={memberEmails}
+                    onChange={(event) => setMemberEmails(event.target.value)}
+                    placeholder={t('team.memberEmailsPlaceholder')}
+                    rows={3}
+                  />
+                  <button type="button" onClick={saveTeamMembers} disabled={busy || !memberEmails.trim()}>
+                    <UserPlus size={16} />
+                    {t('team.addMembers')}
+                  </button>
+                  {selectedTeam?.memberEmails?.length ? (
+                    <div className="team-member-list" aria-label={t('team.membersTitle')}>
+                      {selectedTeam.memberEmails.map((email) => <span key={email}>{email}</span>)}
+                    </div>
+                  ) : (
+                    <p className="team-empty-note">{t('team.noMembers')}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeSection === 'rooms' && (
+        <section className="teams-section">
+          <div className="section-head">
+            <div>
+              <h2>{t('rooms.title')}</h2>
+              <p>{t('rooms.description')}</p>
+            </div>
+            {session?.identity.provider !== 'google' && <span className="login-required">{t('app.googleRequired')}</span>}
+          </div>
+
+          {teams.length === 0 ? (
+            <div className="team-empty-panel">
+              <Building2 size={22} />
+              <p>{t('rooms.emptyTeams')}</p>
+            </div>
+          ) : (
+            <div className="team-board">
+              <div className="team-list">
+                {teams.map((team) => (
+                  <button
+                    className={team.id === selectedTeamId ? 'selected' : ''}
+                    key={team.id}
+                    onClick={() => setSelectedTeamId(team.id)}
+                  >
+                    <Building2 size={17} />
+                    {team.name}
+                  </button>
+                ))}
+              </div>
+              <div className="room-list">
+                <div className="team-members-card">
+                  <div>
+                    <strong>{t('rooms.createTitle')}</strong>
+                    <p>{t('rooms.createDescription')}</p>
+                  </div>
+                  <div className="team-builder compact">
+                    <input value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} />
+                    <button onClick={addTeamRoom} disabled={busy || !selectedTeamId}>
+                      <Plus size={16} />
+                      {t('rooms.createRoom')}
+                    </button>
+                  </div>
+                  <div className="team-room-options">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={inviteTeamMembers}
+                        onChange={(event) => setInviteTeamMembers(event.target.checked)}
+                      />
+                      {t('team.inviteAllMembers')}
+                    </label>
+                    <label>
+                      {t('team.schedule')}
+                      <input
+                        type="datetime-local"
+                        value={teamRoomSchedule}
+                        onChange={(event) => setTeamRoomSchedule(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  {teamInviteStatus && <p className="team-invite-status">{teamInviteStatus}</p>}
+                </div>
+
+                <div>
+                  <h3>{t('rooms.selectedTeamTitle')}</h3>
+                  {rooms.length > 0 ? (
+                    rooms.map((room) => (
+                      <article key={room.id}>
+                        <div>
+                          <h3>{room.title}</h3>
+                          <p>{selectedTeam?.name} · /r/{room.slug}</p>
+                        </div>
+                        <button onClick={() => onNavigate(`/r/${room.slug}`)}>{t('dashboard.join')}</button>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="team-empty-note">{t('rooms.emptySelected')}</p>
+                  )}
+                </div>
+
+                <div>
+                  <h3>{t('rooms.allTitle')}</h3>
+                  {persistentRooms.length > 0 ? (
+                    persistentRooms.map(({ room, team }) => (
+                      <article key={room.id}>
+                        <div>
+                          <h3>{room.title}</h3>
+                          <p>{team.name} · /r/{room.slug}</p>
+                        </div>
+                        <button onClick={() => onNavigate(`/r/${room.slug}`)}>{t('dashboard.join')}</button>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="team-empty-note">{t('rooms.emptyAll')}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </section>
   );
 }
