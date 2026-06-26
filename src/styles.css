@@ -1269,6 +1269,22 @@ textarea:focus {
   box-shadow: none;
 }
 
+.chat-preview-selector-tile .lk-participant-metadata,
+.chat-preview-selector-tile .meeting-stage-tile-chip {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: none;
+}
+
+.chat-preview-selector-tile:hover .lk-participant-metadata,
+.chat-preview-selector-tile:focus-visible .lk-participant-metadata,
+.chat-preview-selector-tile:hover .meeting-stage-tile-chip,
+.chat-preview-selector-tile:focus-visible .meeting-stage-tile-chip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .chat-preview-selector-tile .meeting-stage-tile-chip {
   left: 6px;
   top: 6px;
