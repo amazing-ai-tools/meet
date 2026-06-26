@@ -41,6 +41,7 @@ import {
   useTrackToggle,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { BackgroundProcessor, supportsBackgroundProcessors } from '@livekit/track-processors';
 import { Track } from 'livekit-client';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -1965,7 +1966,6 @@ function BackgroundEffectsPanel({ onDeviceError }: { onDeviceError: () => void }
         return;
       }
 
-      const { BackgroundProcessor, supportsBackgroundProcessors } = await import('@livekit/track-processors');
       if (!supportsBackgroundProcessors()) {
         throw new Error(t('background.notSupported'));
       }

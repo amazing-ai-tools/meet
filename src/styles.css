@@ -1085,6 +1085,7 @@ textarea:focus {
 }
 
 .meeting-stage-tile-button.is-metadata-on-interaction .lk-participant-metadata,
+.meeting-stage-tile-button.is-metadata-on-interaction .lk-participant-placeholder,
 .meeting-stage-tile-button.is-metadata-on-interaction .meeting-stage-tile-chip {
   opacity: 0;
   transform: translateY(5px);
@@ -1097,6 +1098,9 @@ textarea:focus {
 .meeting-stage-tile-button.is-metadata-on-interaction:hover .lk-participant-metadata,
 .meeting-stage-tile-button.is-metadata-on-interaction:focus-visible .lk-participant-metadata,
 .meeting-stage-tile-button.is-metadata-on-interaction:active .lk-participant-metadata,
+.meeting-stage-tile-button.is-metadata-on-interaction:hover .lk-participant-placeholder,
+.meeting-stage-tile-button.is-metadata-on-interaction:focus-visible .lk-participant-placeholder,
+.meeting-stage-tile-button.is-metadata-on-interaction:active .lk-participant-placeholder,
 .meeting-stage-tile-button.is-metadata-on-interaction:hover .meeting-stage-tile-chip,
 .meeting-stage-tile-button.is-metadata-on-interaction:focus-visible .meeting-stage-tile-chip,
 .meeting-stage-tile-button.is-metadata-on-interaction:active .meeting-stage-tile-chip {
@@ -1290,6 +1294,7 @@ textarea:focus {
 }
 
 .chat-preview-selector-tile .lk-participant-metadata,
+.chat-preview-selector-tile .lk-participant-placeholder,
 .chat-preview-selector-tile .meeting-stage-tile-chip {
   opacity: 0;
   transform: translateY(5px);
@@ -1302,6 +1307,9 @@ textarea:focus {
 .chat-preview-selector-tile:hover .lk-participant-metadata,
 .chat-preview-selector-tile:focus-visible .lk-participant-metadata,
 .chat-preview-selector-tile:active .lk-participant-metadata,
+.chat-preview-selector-tile:hover .lk-participant-placeholder,
+.chat-preview-selector-tile:focus-visible .lk-participant-placeholder,
+.chat-preview-selector-tile:active .lk-participant-placeholder,
 .chat-preview-selector-tile:hover .meeting-stage-tile-chip,
 .chat-preview-selector-tile:focus-visible .meeting-stage-tile-chip,
 .chat-preview-selector-tile:active .meeting-stage-tile-chip {
