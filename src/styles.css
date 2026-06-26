@@ -1084,6 +1084,26 @@ textarea:focus {
   backdrop-filter: blur(10px);
 }
 
+.meeting-stage-tile-button.is-metadata-on-interaction .lk-participant-metadata,
+.meeting-stage-tile-button.is-metadata-on-interaction .meeting-stage-tile-chip {
+  opacity: 0;
+  transform: translateY(5px);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+  pointer-events: none;
+}
+
+.meeting-stage-tile-button.is-metadata-on-interaction:hover .lk-participant-metadata,
+.meeting-stage-tile-button.is-metadata-on-interaction:focus-visible .lk-participant-metadata,
+.meeting-stage-tile-button.is-metadata-on-interaction:active .lk-participant-metadata,
+.meeting-stage-tile-button.is-metadata-on-interaction:hover .meeting-stage-tile-chip,
+.meeting-stage-tile-button.is-metadata-on-interaction:focus-visible .meeting-stage-tile-chip,
+.meeting-stage-tile-button.is-metadata-on-interaction:active .meeting-stage-tile-chip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .fullscreen-stage {
   position: relative;
   z-index: 1;
@@ -1272,15 +1292,19 @@ textarea:focus {
 .chat-preview-selector-tile .lk-participant-metadata,
 .chat-preview-selector-tile .meeting-stage-tile-chip {
   opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 150ms ease, transform 150ms ease;
+  transform: translateY(5px);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
   pointer-events: none;
 }
 
 .chat-preview-selector-tile:hover .lk-participant-metadata,
 .chat-preview-selector-tile:focus-visible .lk-participant-metadata,
+.chat-preview-selector-tile:active .lk-participant-metadata,
 .chat-preview-selector-tile:hover .meeting-stage-tile-chip,
-.chat-preview-selector-tile:focus-visible .meeting-stage-tile-chip {
+.chat-preview-selector-tile:focus-visible .meeting-stage-tile-chip,
+.chat-preview-selector-tile:active .meeting-stage-tile-chip {
   opacity: 1;
   transform: translateY(0);
 }
@@ -1317,6 +1341,19 @@ textarea:focus {
   font-size: 0.76rem;
   font-weight: 900;
   text-align: center;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+  pointer-events: none;
+}
+
+.local-camera-preview:hover span,
+.local-camera-preview:focus-within span,
+.local-camera-preview:active span {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .stage-thumbnail-strip {

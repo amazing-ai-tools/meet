@@ -110,6 +110,7 @@ import {
   getStageSpotlightSelectionAfterClick,
   type StageSpotlightKey,
 } from './stageSpotlight';
+import { getStageThumbnailMetadataClass } from './stageThumbnailMetadata';
 import './styles.css';
 
 declare global {
@@ -2107,7 +2108,10 @@ function MeetingVideoStage({
             track={localCameraTrack}
             selected={getMeetingTrackSpotlightKey(localCameraTrack) === selectedSpotlightKey}
             onToggleSpotlight={onToggleSpotlight}
-            tileClassName="local-camera-preview-tile"
+            tileClassName={[
+              'local-camera-preview-tile',
+              getStageThumbnailMetadataClass('fullscreen-local-preview'),
+            ].join(' ')}
           />
           <span>{t('stage.self')}</span>
         </aside>
@@ -2121,7 +2125,7 @@ function MeetingVideoStage({
               track={track}
               selected={getMeetingTrackSpotlightKey(track) === selectedSpotlightKey}
               onToggleSpotlight={onToggleSpotlight}
-              tileClassName="stage-thumbnail-tile"
+              tileClassName={['stage-thumbnail-tile', getStageThumbnailMetadataClass('fullscreen-strip')].join(' ')}
             />
           ))}
         </div>
@@ -2182,7 +2186,10 @@ function MobileImmersiveVideoStage({
                 track={track}
                 selected={key === activeSpotlightKey}
                 onToggleSpotlight={onSelectSpotlight}
-                tileClassName="mobile-immersive-thumbnail-tile"
+                tileClassName={[
+                  'mobile-immersive-thumbnail-tile',
+                  getStageThumbnailMetadataClass('mobile-strip'),
+                ].join(' ')}
               />
             );
           })}
@@ -2431,7 +2438,9 @@ function MeetingChatFocus({
                   selected={key === previewSpotlightKey}
                   ariaLabel={t('stage.showInChat', { media: mediaLabel, participant: participantName })}
                   onToggleSpotlight={onSelectSpotlight}
-                  tileClassName="chat-preview-selector-tile"
+                  tileClassName={['chat-preview-selector-tile', getStageThumbnailMetadataClass('chat-preview')].join(
+                    ' ',
+                  )}
                 />
               );
             })}
