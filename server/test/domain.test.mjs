@@ -15,6 +15,8 @@ import {
   createId,
   createParticipant,
   createParticipantSession,
+  createRoomAdmissionRequest,
+  resolveRoomAdmissionPolicy,
   normalizeWidgetContextId,
 } from '../dist/domain.js';
 import { defaultLiveKitUrl } from '../dist/livekit.js';
@@ -163,6 +165,31 @@ test('host can block a participant from sending chat messages', () => {
   assert.equal(canSendChatMessage(room, participant, []), true);
   assert.equal(canSendChatMessage(room, participant, [participant.id]), false);
   assert.equal(canSendChatMessage(room, host, [host.id]), true);
+});
+
+test('room admission requires approval only when someone is already inside', () => {
+  const host = createGuestIdentity('Host');
+  const guest = createGuestIdentity('Guest');
+  const room = createInstantRoom(host, 'Approval Room');
+  const hostParticipant = createParticipant(room, host);
+  const hostSession = createParticipantSession(room, hostParticipant, '2026-06-26T10:00:00.000Z');
+
+  assert.equal(resolveRoomAdmissionPolicy(room, guest, [], []).decision, 'allow');
+  assert.equal(resolveRoomAdmissionPolicy(room, guest, [hostSession], []).decision, 'request');
+
+  const request = createRoomAdmissionRequest(room, guest);
+  assert.equal(request.status, 'pending');
+  assert.equal(request.displayName, guest.displayName);
+
+  assert.equal(
+    resolveRoomAdmissionPolicy(room, guest, [hostSession], [{ ...request, status: 'approved' }]).decision,
+    'allow',
+  );
+
+  assert.equal(
+    resolveRoomAdmissionPolicy(room, host, [hostSession], []).decision,
+    'allow',
+  );
 });
 
 test('room invitations normalize email recipients and optional schedule time', () => {

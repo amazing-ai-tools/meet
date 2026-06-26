@@ -10,6 +10,8 @@ import type {
   MarketingStats,
   RoomInvitation,
   RoomInvitationDeliveryStatus,
+  RoomAdmissionRequest,
+  RoomAdmissionStatus,
   Team,
   WidgetRoomContext,
 } from './domain.js';
@@ -20,6 +22,10 @@ export type RoomChatEvent =
   | { type: 'blocked'; roomId: string; blockedIdentityIds: string[] }
   | { type: 'typing'; roomId: string; identityId: string; displayName: string; typing: boolean };
 
+export type RoomAdmissionEvent =
+  | { type: 'requested'; roomId: string; request: RoomAdmissionRequest }
+  | { type: 'resolved'; roomId: string; request: RoomAdmissionRequest };
+
 export type AppState = {
   identities: Identity[];
   rooms: MeetingRoom[];
@@ -29,6 +35,7 @@ export type AppState = {
   chatMessages: ChatMessage[];
   chatBlockedIdentityIds: Record<string, string[]>;
   roomInvitations: RoomInvitation[];
+  roomAdmissionRequests: RoomAdmissionRequest[];
   widgetRoomContexts: WidgetRoomContext[];
 };
 
@@ -41,12 +48,14 @@ const emptyState: AppState = {
   chatMessages: [],
   chatBlockedIdentityIds: {},
   roomInvitations: [],
+  roomAdmissionRequests: [],
   widgetRoomContexts: [],
 };
 
 export class JsonStore {
   private state: AppState = structuredClone(emptyState);
   private readonly roomChatListeners = new Map<string, Set<(event: RoomChatEvent) => void>>();
+  private readonly roomAdmissionListeners = new Map<string, Set<(event: RoomAdmissionEvent) => void>>();
 
   constructor(private readonly filePath: string) {}
 
@@ -103,6 +112,10 @@ export class JsonStore {
     return this.state.participants.filter((participant) => participant.roomId === roomId);
   }
 
+  listActiveParticipantSessionsForRoom(roomId: string): MeetingParticipantSession[] {
+    return this.state.participantSessions.filter((session) => session.roomId === roomId && !session.leftAt);
+  }
+
   getMarketingStats(now = new Date().toISOString()): MarketingStats {
     const uniqueJoinedIdentityIds = new Set([
       ...this.state.participants.map((participant) => participant.identityId),
@@ -134,6 +147,16 @@ export class JsonStore {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  listRoomAdmissionRequests(roomId: string): RoomAdmissionRequest[] {
+    return this.state.roomAdmissionRequests
+      .filter((request) => request.roomId === roomId)
+      .sort((a, b) => a.requestedAt.localeCompare(b.requestedAt));
+  }
+
+  findRoomAdmissionRequest(requestId: string): RoomAdmissionRequest | undefined {
+    return this.state.roomAdmissionRequests.find((request) => request.id === requestId);
+  }
+
   findWidgetRoomContext(contextId: string): WidgetRoomContext | undefined {
     return this.state.widgetRoomContexts.find((context) => context.contextId === contextId);
   }
@@ -147,6 +170,19 @@ export class JsonStore {
       listeners.delete(listener);
       if (listeners.size === 0) {
         this.roomChatListeners.delete(roomId);
+      }
+    };
+  }
+
+  subscribeRoomAdmissions(roomId: string, listener: (event: RoomAdmissionEvent) => void): () => void {
+    const listeners = this.roomAdmissionListeners.get(roomId) || new Set<(event: RoomAdmissionEvent) => void>();
+    listeners.add(listener);
+    this.roomAdmissionListeners.set(roomId, listeners);
+
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        this.roomAdmissionListeners.delete(roomId);
       }
     };
   }
@@ -228,6 +264,51 @@ export class JsonStore {
     return structuredClone(session);
   }
 
+  async upsertRoomAdmissionRequest(request: RoomAdmissionRequest): Promise<RoomAdmissionRequest> {
+    const existingIndex = this.state.roomAdmissionRequests.findIndex(
+      (saved) => saved.roomId === request.roomId
+        && saved.identityId === request.identityId
+        && saved.status === 'pending',
+    );
+
+    if (existingIndex >= 0) {
+      this.state.roomAdmissionRequests[existingIndex] = {
+        ...this.state.roomAdmissionRequests[existingIndex],
+        displayName: request.displayName,
+        requestedAt: request.requestedAt,
+      };
+      await this.save();
+      return structuredClone(this.state.roomAdmissionRequests[existingIndex]);
+    }
+
+    this.state.roomAdmissionRequests.push(request);
+    await this.save();
+    this.emitRoomAdmissionEvent({ type: 'requested', roomId: request.roomId, request: structuredClone(request) });
+    return structuredClone(request);
+  }
+
+  async resolveRoomAdmissionRequest(
+    roomId: string,
+    requestId: string,
+    status: Exclude<RoomAdmissionStatus, 'pending'>,
+    resolvedByIdentityId: string,
+  ): Promise<RoomAdmissionRequest> {
+    const request = this.state.roomAdmissionRequests.find(
+      (saved) => saved.roomId === roomId && saved.id === requestId,
+    );
+    if (!request) {
+      throw new Error('Admission request not found');
+    }
+
+    request.status = status;
+    request.resolvedAt = new Date().toISOString();
+    request.resolvedByIdentityId = resolvedByIdentityId;
+    await this.save();
+    const cloned = structuredClone(request);
+    this.emitRoomAdmissionEvent({ type: 'resolved', roomId, request: cloned });
+    return cloned;
+  }
+
   async addChatMessage(message: ChatMessage): Promise<ChatMessage> {
     this.state.chatMessages.push(message);
     this.state.chatMessages = this.state.chatMessages.slice(-1000);
@@ -297,6 +378,17 @@ export class JsonStore {
 
   private emitRoomChatEvent(event: RoomChatEvent): void {
     const listeners = this.roomChatListeners.get(event.roomId);
+    if (!listeners) {
+      return;
+    }
+
+    for (const listener of listeners) {
+      listener(event);
+    }
+  }
+
+  private emitRoomAdmissionEvent(event: RoomAdmissionEvent): void {
+    const listeners = this.roomAdmissionListeners.get(event.roomId);
     if (!listeners) {
       return;
     }

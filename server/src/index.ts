@@ -7,14 +7,17 @@ import {
   createInstantRoom,
   createParticipant,
   createParticipantSession,
+  createRoomAdmissionRequest,
   createRoomInvitation,
   createTeam,
   createTeamRoom,
   isTeamMember,
   normalizeWidgetContextId,
+  resolveRoomAdmissionPolicy,
   type Identity,
   type MeetingRoom,
   type RoomInvitation,
+  type MeetingParticipant,
 } from './domain.js';
 import {
   createGuestSession,
@@ -187,17 +190,87 @@ app.post('/api/rooms/:slug/join', withIdentity(false, async (request, response, 
   }
 
   const joinedIdentity = identity || (await createAndSaveGuest(readString(request.body?.displayName, 'Guest')));
-  const participant = await store.addParticipant(createParticipant(room, joinedIdentity));
-  await store.startParticipantSession(createParticipantSession(room, participant));
-  const livekit = await createLiveKitJoinToken(liveKitConfig, room, joinedIdentity, participant);
-
-  response.status(201).json({
+  const activeSessions = store.listActiveParticipantSessionsForRoom(room.id);
+  const existingParticipant = store
+    .listParticipantsForRoom(room.id)
+    .find((participant) => participant.identityId === joinedIdentity.id);
+  const admissionPolicy = resolveRoomAdmissionPolicy(
     room,
-    identity: joinedIdentity,
-    participant,
-    livekit,
-    sessionToken: identity ? undefined : signInMemoryGuest(joinedIdentity),
+    joinedIdentity,
+    activeSessions,
+    store.listRoomAdmissionRequests(room.id),
+  );
+
+  if (!existingParticipant && admissionPolicy.decision === 'request') {
+    const admissionRequest = await store.upsertRoomAdmissionRequest(createRoomAdmissionRequest(room, joinedIdentity));
+    response.status(202).json({
+      status: 'waiting',
+      room,
+      identity: joinedIdentity,
+      request: admissionRequest,
+      sessionToken: identity ? undefined : signInMemoryGuest(joinedIdentity),
+    });
+    return;
+  }
+
+  response.status(201).json(await createJoinPayload(room, joinedIdentity, identity ? undefined : signInMemoryGuest(joinedIdentity)));
+}));
+
+app.get('/api/rooms/:slug/admissions/:requestId', withIdentity(true, async (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const admissionRequest = store.findRoomAdmissionRequest(request.params.requestId);
+  if (!admissionRequest || admissionRequest.roomId !== room.id || admissionRequest.identityId !== identity!.id) {
+    response.status(404).json({ error: 'Admission request not found' });
+    return;
+  }
+
+  response.json({ request: admissionRequest });
+}));
+
+app.get('/api/rooms/:slug/admissions', withIdentity(true, async (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  if (!isActiveRoomParticipant(room.id, identity!.id)) {
+    response.status(403).json({ error: 'Only participants in the room can approve entry requests' });
+    return;
+  }
+
+  response.json({
+    requests: store
+      .listRoomAdmissionRequests(room.id)
+      .filter((admissionRequest) => admissionRequest.status === 'pending'),
   });
+}));
+
+app.post('/api/rooms/:slug/admissions/:requestId', withIdentity(true, async (request, response, identity) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  if (!isActiveRoomParticipant(room.id, identity!.id)) {
+    response.status(403).json({ error: 'Only participants in the room can approve entry requests' });
+    return;
+  }
+
+  const decision = request.body?.decision === 'approved' ? 'approved' : request.body?.decision === 'rejected' ? 'rejected' : undefined;
+  if (!decision) {
+    response.status(400).json({ error: 'Admission decision must be approved or rejected' });
+    return;
+  }
+
+  const admissionRequest = await store.resolveRoomAdmissionRequest(room.id, request.params.requestId, decision, identity!.id);
+  response.json({ request: admissionRequest });
 }));
 
 app.post('/api/rooms/:slug/leave', withIdentity(true, async (request, response, identity) => {
@@ -483,6 +556,36 @@ async function createAndSaveGuest(displayName: string): Promise<Identity> {
   const session = createGuestSession(displayName, authConfig);
   await store.upsertIdentity(session.identity);
   return session.identity;
+}
+
+async function createJoinPayload(
+  room: MeetingRoom,
+  identity: Identity,
+  sessionToken?: string,
+): Promise<{
+  room: MeetingRoom;
+  identity: Identity;
+  participant: MeetingParticipant;
+  livekit: Awaited<ReturnType<typeof createLiveKitJoinToken>>;
+  sessionToken?: string;
+}> {
+  const participant = await store.addParticipant(createParticipant(room, identity));
+  await store.startParticipantSession(createParticipantSession(room, participant));
+  const livekit = await createLiveKitJoinToken(liveKitConfig, room, identity, participant);
+
+  return {
+    room,
+    identity,
+    participant,
+    livekit,
+    sessionToken,
+  };
+}
+
+function isActiveRoomParticipant(roomId: string, identityId: string): boolean {
+  return store
+    .listActiveParticipantSessionsForRoom(roomId)
+    .some((session) => session.identityId === identityId);
 }
 
 async function createAndDeliverRoomInvitations(

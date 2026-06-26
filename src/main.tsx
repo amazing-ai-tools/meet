@@ -57,20 +57,33 @@ import {
   getAppConfig,
   getMarketingStats,
   getRoom,
+  getRoomAdmissionStatus,
   joinRoom,
   leaveRoom,
+  listRoomAdmissions,
   listRoomInvitations,
   listTeamRooms,
   listTeams,
   listRoomChat,
   moderateRoomParticipant,
+  resolveRoomAdmission,
   sendRoomChatMessage,
   sendRoomInvitations,
   setRoomChatTyping,
   subscribeRoomChat,
   loadSession,
 } from './api';
-import type { ChatMessage, JoinResponse, MarketingStats, MeetingRoom, RoomInvitation, Session, Team } from './types';
+import type {
+  AdmissionWaitingResponse,
+  ChatMessage,
+  JoinResponse,
+  MarketingStats,
+  MeetingRoom,
+  RoomAdmissionRequest,
+  RoomInvitation,
+  Session,
+  Team,
+} from './types';
 import { getCameraDeviceForFacingMode, getNextFacingMode } from './cameraDevices';
 import {
   getFullscreenStageToggleLabel,
@@ -1009,6 +1022,10 @@ function WidgetVideoBubble({ onClose }: { onClose: () => void }) {
   );
 }
 
+function isAdmissionWaitingResponse(response: JoinResponse | AdmissionWaitingResponse): response is AdmissionWaitingResponse {
+  return 'status' in response && response.status === 'waiting';
+}
+
 function MeetingRoute({
   slug,
   session,
@@ -1026,18 +1043,20 @@ function MeetingRoute({
   const [room, setRoom] = React.useState<MeetingRoom | undefined>();
   const [displayName, setDisplayName] = React.useState(session?.identity.displayName || '');
   const [join, setJoin] = React.useState<JoinResponse | undefined>();
+  const [admissionWait, setAdmissionWait] = React.useState<AdmissionWaitingResponse | undefined>();
   const [error, setError] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const meetingUrl = createMeetingUrl(slug, appDomain);
 
   React.useEffect(() => {
     setJoin(undefined);
+    setAdmissionWait(undefined);
     getRoom(slug)
       .then(({ room: loadedRoom }) => setRoom(loadedRoom))
       .catch((err: Error) => setError(err.message));
   }, [slug]);
 
-  const enterRoom = async () => {
+  const enterRoom = React.useCallback(async () => {
     setBusy(true);
     setError('');
     try {
@@ -1047,6 +1066,13 @@ function MeetingRoute({
         onSession(activeSession);
       }
       const response = await joinRoom(slug, activeSession?.identity.displayName || displayName);
+      if (isAdmissionWaitingResponse(response)) {
+        if (response.sessionToken) {
+          onSession({ identity: response.identity, token: response.sessionToken });
+        }
+        setAdmissionWait(response);
+        return;
+      }
       if (response.sessionToken) {
         onSession({ identity: response.identity, token: response.sessionToken });
       }
@@ -1056,7 +1082,42 @@ function MeetingRoute({
     } finally {
       setBusy(false);
     }
-  };
+  }, [displayName, onSession, session, slug]);
+
+  React.useEffect(() => {
+    if (!admissionWait) {
+      return;
+    }
+
+    let cancelled = false;
+    const interval = window.setInterval(async () => {
+      try {
+        const { request } = await getRoomAdmissionStatus(slug, admissionWait.request.id);
+        if (cancelled) {
+          return;
+        }
+        if (request.status === 'approved') {
+          window.clearInterval(interval);
+          setAdmissionWait(undefined);
+          await enterRoom();
+        }
+        if (request.status === 'rejected') {
+          window.clearInterval(interval);
+          setAdmissionWait(undefined);
+          setError(t('admission.rejected'));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError((err as Error).message);
+        }
+      }
+    }, 2500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [admissionWait, enterRoom, slug, t]);
 
   if (join) {
     return <MeetingRoomView join={join} meetingUrl={meetingUrl} onNavigate={onNavigate} />;
@@ -1077,11 +1138,17 @@ function MeetingRoute({
       <div className="lobby-card">
         <div className="camera-check">
           <Video size={46} />
-          <p>{t('lobby.cameraHint')}</p>
+          <p>{admissionWait ? t('admission.waitingHint') : t('lobby.cameraHint')}</p>
         </div>
         <div className="lobby-form">
-          <h2>{t('lobby.enter')}</h2>
-          {!session && (
+          <h2>{admissionWait ? t('admission.waitingTitle') : t('lobby.enter')}</h2>
+          {admissionWait ? (
+            <div className="admission-wait-card" role="status">
+              <Users size={18} />
+              <p>{t('admission.waitingBody')}</p>
+            </div>
+          ) : null}
+          {!session && !admissionWait && (
             <input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
@@ -1089,10 +1156,10 @@ function MeetingRoute({
               aria-label={t('dashboard.name')}
             />
           )}
-          <GoogleSignIn googleClientId={googleClientId} onSession={onSession} />
-          <button className="primary-action" onClick={enterRoom} disabled={busy || (!session && displayName.trim().length < 2)}>
+          {!admissionWait ? <GoogleSignIn googleClientId={googleClientId} onSession={onSession} /> : null}
+          <button className="primary-action" onClick={enterRoom} disabled={Boolean(admissionWait) || busy || (!session && displayName.trim().length < 2)}>
             <Video size={18} />
-            {t('lobby.enterNow')}
+            {admissionWait ? t('admission.waitingButton') : t('lobby.enterNow')}
           </button>
           <MeetingShareCard url={meetingUrl} label={t('meeting.shareRoom')} />
         </div>
@@ -1618,6 +1685,7 @@ function MeetingParticipantsList({
 
   return (
     <div className="participants-list-shell">
+      <MeetingAdmissionRequests roomSlug={roomSlug} />
       <ul className="participants-list">
         {participants.map((participant) => {
           const microphonePublication = participant.getTrackPublication(Track.Source.Microphone);
@@ -1661,6 +1729,96 @@ function MeetingParticipantsList({
       </ul>
       {status ? <p className="panel-status">{status}</p> : null}
     </div>
+  );
+}
+
+function MeetingAdmissionRequests({ roomSlug }: { roomSlug: string }) {
+  const t = useT();
+  const [requests, setRequests] = React.useState<RoomAdmissionRequest[]>([]);
+  const [status, setStatus] = React.useState('');
+  const [busyRequestId, setBusyRequestId] = React.useState<string>();
+
+  const loadRequests = React.useCallback(async () => {
+    const response = await listRoomAdmissions(roomSlug);
+    setRequests(response.requests);
+  }, [roomSlug]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const response = await listRoomAdmissions(roomSlug);
+        if (!cancelled) {
+          setRequests(response.requests);
+        }
+      } catch {
+        if (!cancelled) {
+          setRequests([]);
+        }
+      }
+    };
+
+    void sync();
+    const interval = window.setInterval(sync, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [roomSlug]);
+
+  const decide = async (requestId: string, decision: 'approved' | 'rejected') => {
+    setBusyRequestId(requestId);
+    setStatus('');
+    try {
+      await resolveRoomAdmission(roomSlug, requestId, decision);
+      await loadRequests();
+      setStatus(decision === 'approved' ? t('admission.approved') : t('admission.denied'));
+    } catch (err) {
+      setStatus((err as Error).message);
+    } finally {
+      setBusyRequestId(undefined);
+    }
+  };
+
+  if (requests.length === 0) {
+    return status ? <p className="panel-status">{status}</p> : null;
+  }
+
+  return (
+    <section className="admission-requests-card" aria-label={t('admission.pendingTitle')}>
+      <div className="admission-requests-head">
+        <UserPlus size={16} />
+        <strong>{t('admission.pendingTitle')}</strong>
+        <span>{requests.length}</span>
+      </div>
+      <ul className="admission-request-list">
+        {requests.map((request) => (
+          <li key={request.id}>
+            <span>{request.displayName}</span>
+            <div className="participant-actions">
+              <button
+                type="button"
+                disabled={busyRequestId === request.id}
+                title={t('admission.approve')}
+                onClick={() => decide(request.id, 'approved')}
+              >
+                {t('admission.approveShort')}
+              </button>
+              <button
+                type="button"
+                className="danger-mini"
+                disabled={busyRequestId === request.id}
+                title={t('admission.reject')}
+                onClick={() => decide(request.id, 'rejected')}
+              >
+                {t('admission.rejectShort')}
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {status ? <p className="panel-status">{status}</p> : null}
+    </section>
   );
 }
 

@@ -28,6 +28,17 @@ export type MeetingParticipant = {
   joinedAt: string;
 };
 
+export type RoomAdmissionRequest = {
+  id: string;
+  roomId: string;
+  identityId: string;
+  displayName: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string;
+  resolvedAt?: string;
+  resolvedByIdentityId?: string;
+};
+
 export type Team = {
   id: string;
   name: string;
@@ -55,6 +66,16 @@ export type JoinResponse = {
   livekit: LiveKitJoin;
   sessionToken?: string;
 };
+
+export type AdmissionWaitingResponse = {
+  status: 'waiting';
+  room: MeetingRoom;
+  identity: Identity;
+  request: RoomAdmissionRequest;
+  sessionToken?: string;
+};
+
+export type RoomJoinResponse = JoinResponse | AdmissionWaitingResponse;
 
 export type WidgetRoomResponse = {
   contextId: string;

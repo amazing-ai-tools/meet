@@ -6,6 +6,18 @@ export type TranslationKey =
   | 'app.loadingMeeting'
   | 'app.productSummary'
   | 'app.signInHint'
+  | 'admission.approve'
+  | 'admission.approved'
+  | 'admission.approveShort'
+  | 'admission.denied'
+  | 'admission.pendingTitle'
+  | 'admission.reject'
+  | 'admission.rejected'
+  | 'admission.rejectShort'
+  | 'admission.waitingBody'
+  | 'admission.waitingButton'
+  | 'admission.waitingHint'
+  | 'admission.waitingTitle'
   | 'background.blur'
   | 'background.brand'
   | 'background.chooseImage'
@@ -176,6 +188,18 @@ const pt: TranslationMap = {
   'app.loadingMeeting': 'Carregando reuniao',
   'app.productSummary': 'Reunioes avulsas por link e salas persistentes para times.',
   'app.signInHint': 'Entre como convidado para reunioes avulsas ou use Google para times.',
+  'admission.approve': 'Aprovar entrada',
+  'admission.approved': 'Entrada aprovada.',
+  'admission.approveShort': 'Aprovar',
+  'admission.denied': 'Entrada recusada.',
+  'admission.pendingTitle': 'Pedidos de entrada',
+  'admission.reject': 'Recusar entrada',
+  'admission.rejected': 'Sua entrada foi recusada.',
+  'admission.rejectShort': 'Recusar',
+  'admission.waitingBody': 'Alguem que ja esta na sala precisa aprovar sua entrada.',
+  'admission.waitingButton': 'Aguardando aprovacao',
+  'admission.waitingHint': 'Seu pedido foi enviado. A camera e o microfone so ligam depois da aprovacao.',
+  'admission.waitingTitle': 'Aguardando aprovacao',
   'background.blur': 'Desfocar fundo',
   'background.brand': 'Fundo amazing-ai',
   'background.chooseImage': 'Escolha uma imagem para o fundo.',
@@ -346,6 +370,18 @@ const en: TranslationMap = {
   'app.loadingMeeting': 'Loading meeting',
   'app.productSummary': 'Instant link meetings and persistent rooms for teams.',
   'app.signInHint': 'Join instant meetings as a guest or use Google for teams.',
+  'admission.approve': 'Approve entry',
+  'admission.approved': 'Entry approved.',
+  'admission.approveShort': 'Approve',
+  'admission.denied': 'Entry rejected.',
+  'admission.pendingTitle': 'Entry requests',
+  'admission.reject': 'Reject entry',
+  'admission.rejected': 'Your entry was rejected.',
+  'admission.rejectShort': 'Reject',
+  'admission.waitingBody': 'Someone already in the room needs to approve your entry.',
+  'admission.waitingButton': 'Waiting for approval',
+  'admission.waitingHint': 'Your request was sent. Camera and microphone turn on only after approval.',
+  'admission.waitingTitle': 'Waiting for approval',
   'background.blur': 'Blur background',
   'background.chooseImage': 'Choose an image for the background.',
   'background.custom': 'Custom image',
@@ -501,6 +537,18 @@ const fr: TranslationMap = {
   'app.loadingMeeting': 'Chargement de la reunion',
   'app.productSummary': 'Reunions instantanees par lien et salles persistantes pour les equipes.',
   'app.signInHint': 'Rejoignez les reunions instantanees comme invite ou utilisez Google pour les equipes.',
+  'admission.approve': 'Approuver l entree',
+  'admission.approved': 'Entree approuvee.',
+  'admission.approveShort': 'Approuver',
+  'admission.denied': 'Entree refusee.',
+  'admission.pendingTitle': 'Demandes d entree',
+  'admission.reject': 'Refuser l entree',
+  'admission.rejected': 'Votre entree a ete refusee.',
+  'admission.rejectShort': 'Refuser',
+  'admission.waitingBody': 'Une personne deja dans la salle doit approuver votre entree.',
+  'admission.waitingButton': 'En attente d approbation',
+  'admission.waitingHint': 'Votre demande a ete envoyee. Camera et micro s activent seulement apres approbation.',
+  'admission.waitingTitle': 'En attente d approbation',
   'background.blur': 'Flouter l’arriere-plan',
   'background.chooseImage': 'Choisissez une image pour l’arriere-plan.',
   'background.custom': 'Image personnalisee',

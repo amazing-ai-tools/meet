@@ -52,6 +52,19 @@ export type MeetingParticipantSession = {
   leftAt?: string;
 };
 
+export type RoomAdmissionStatus = 'pending' | 'approved' | 'rejected';
+
+export type RoomAdmissionRequest = {
+  id: string;
+  roomId: string;
+  identityId: string;
+  displayName: string;
+  status: RoomAdmissionStatus;
+  requestedAt: string;
+  resolvedAt?: string;
+  resolvedByIdentityId?: string;
+};
+
 export type ChatAttachmentKind = 'image' | 'file';
 
 export type ChatAttachment = {
@@ -224,6 +237,43 @@ export function createParticipantSession(
     participantId: participant.id,
     joinedAt,
   };
+}
+
+export function createRoomAdmissionRequest(
+  room: MeetingRoom,
+  identity: Identity,
+  requestedAt = new Date().toISOString(),
+): RoomAdmissionRequest {
+  return {
+    id: createId('admit'),
+    roomId: room.id,
+    identityId: identity.id,
+    displayName: identity.displayName,
+    status: 'pending',
+    requestedAt,
+  };
+}
+
+export function resolveRoomAdmissionPolicy(
+  room: MeetingRoom,
+  identity: Identity,
+  activeSessions: MeetingParticipantSession[],
+  admissionRequests: RoomAdmissionRequest[],
+): { decision: 'allow' | 'request'; approvedRequest?: RoomAdmissionRequest; pendingRequest?: RoomAdmissionRequest } {
+  const activeRoomSessions = activeSessions.filter((session) => session.roomId === room.id && !session.leftAt);
+  const identityHasActiveSession = activeRoomSessions.some((session) => session.identityId === identity.id);
+  const approvedRequest = admissionRequests.find(
+    (request) => request.roomId === room.id && request.identityId === identity.id && request.status === 'approved',
+  );
+  const pendingRequest = admissionRequests.find(
+    (request) => request.roomId === room.id && request.identityId === identity.id && request.status === 'pending',
+  );
+
+  if (activeRoomSessions.length === 0 || identityHasActiveSession || approvedRequest) {
+    return { decision: 'allow', approvedRequest };
+  }
+
+  return { decision: 'request', pendingRequest };
 }
 
 export function calculateParticipantHours(

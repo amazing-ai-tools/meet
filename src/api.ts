@@ -5,6 +5,8 @@ import type {
   JoinResponse,
   MarketingStats,
   MeetingRoom,
+  RoomAdmissionRequest,
+  RoomJoinResponse,
   RoomInvitation,
   Session,
   Team,
@@ -90,8 +92,8 @@ export async function getRoom(slug: string): Promise<{ room: MeetingRoom }> {
   return api<{ room: MeetingRoom }>(`/rooms/${slug}`);
 }
 
-export async function joinRoom(slug: string, displayName: string): Promise<JoinResponse> {
-  const response = await api<JoinResponse>(`/rooms/${slug}/join`, {
+export async function joinRoom(slug: string, displayName: string): Promise<RoomJoinResponse> {
+  const response = await api<RoomJoinResponse>(`/rooms/${slug}/join`, {
     method: 'POST',
     body: JSON.stringify({ displayName }),
   });
@@ -101,6 +103,28 @@ export async function joinRoom(slug: string, displayName: string): Promise<JoinR
   }
 
   return response;
+}
+
+export async function getRoomAdmissionStatus(
+  slug: string,
+  requestId: string,
+): Promise<{ request: RoomAdmissionRequest }> {
+  return api<{ request: RoomAdmissionRequest }>(`/rooms/${slug}/admissions/${requestId}`);
+}
+
+export async function listRoomAdmissions(slug: string): Promise<{ requests: RoomAdmissionRequest[] }> {
+  return api<{ requests: RoomAdmissionRequest[] }>(`/rooms/${slug}/admissions`);
+}
+
+export async function resolveRoomAdmission(
+  slug: string,
+  requestId: string,
+  decision: 'approved' | 'rejected',
+): Promise<{ request: RoomAdmissionRequest }> {
+  return api<{ request: RoomAdmissionRequest }>(`/rooms/${slug}/admissions/${requestId}`, {
+    method: 'POST',
+    body: JSON.stringify({ decision }),
+  });
 }
 
 export async function leaveRoom(slug: string, keepalive = false): Promise<void> {
