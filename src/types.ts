@@ -77,6 +77,11 @@ export type AdmissionWaitingResponse = {
 
 export type RoomJoinResponse = JoinResponse | AdmissionWaitingResponse;
 
+export type AdmissionStreamEvent =
+  | { type: 'snapshot'; payload: { requests: RoomAdmissionRequest[] } }
+  | { type: 'requested'; payload: { type: 'requested'; roomId: string; request: RoomAdmissionRequest } }
+  | { type: 'resolved'; payload: { type: 'resolved'; roomId: string; request: RoomAdmissionRequest } };
+
 export type WidgetRoomResponse = {
   contextId: string;
   room: MeetingRoom;

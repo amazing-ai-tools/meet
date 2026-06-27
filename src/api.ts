@@ -5,6 +5,7 @@ import type {
   JoinResponse,
   MarketingStats,
   MeetingRoom,
+  AdmissionStreamEvent,
   RoomAdmissionRequest,
   RoomJoinResponse,
   RoomInvitation,
@@ -125,6 +126,31 @@ export async function resolveRoomAdmission(
     method: 'POST',
     body: JSON.stringify({ decision }),
   });
+}
+
+export function subscribeRoomAdmissions(
+  slug: string,
+  onEvent: (event: AdmissionStreamEvent) => void,
+  onError?: () => void,
+): () => void {
+  const session = loadSession();
+  const tokenParam = session ? `?token=${encodeURIComponent(session.token)}` : '';
+  const source = new EventSource(createApiUrl(`/rooms/${slug}/admissions/stream${tokenParam}`));
+
+  source.addEventListener('snapshot', (event) => {
+    onEvent({ type: 'snapshot', payload: JSON.parse(event.data) });
+  });
+  source.addEventListener('requested', (event) => {
+    onEvent({ type: 'requested', payload: JSON.parse(event.data) });
+  });
+  source.addEventListener('resolved', (event) => {
+    onEvent({ type: 'resolved', payload: JSON.parse(event.data) });
+  });
+  source.onerror = () => {
+    onError?.();
+  };
+
+  return () => source.close();
 }
 
 export async function leaveRoom(slug: string, keepalive = false): Promise<void> {

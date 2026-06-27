@@ -216,6 +216,58 @@ app.post('/api/rooms/:slug/join', withIdentity(false, async (request, response, 
   response.status(201).json(await createJoinPayload(room, joinedIdentity, identity ? undefined : signInMemoryGuest(joinedIdentity)));
 }));
 
+app.get('/api/rooms/:slug/admissions/stream', async (request, response) => {
+  const room = store.findRoomBySlug(request.params.slug);
+  if (!room) {
+    response.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const token = typeof request.query.token === 'string' ? request.query.token : undefined;
+  if (!token) {
+    response.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+
+  let identityId: string;
+  try {
+    identityId = verifySession(token, authConfig.sessionSecret).identityId;
+  } catch {
+    response.status(401).json({ error: 'Invalid session token' });
+    return;
+  }
+
+  if (!isActiveRoomParticipant(room.id, identityId)) {
+    response.status(403).json({ error: 'Only participants in the room can approve entry requests' });
+    return;
+  }
+
+  response.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+  });
+
+  writeServerSentEvent(response, 'snapshot', {
+    requests: store
+      .listRoomAdmissionRequests(room.id)
+      .filter((admissionRequest) => admissionRequest.status === 'pending'),
+  });
+
+  const unsubscribe = store.subscribeRoomAdmissions(room.id, (event) => {
+    writeServerSentEvent(response, event.type, event);
+  });
+  const heartbeat = windowlessSetInterval(() => {
+    response.write(': keepalive\n\n');
+  }, 25000);
+
+  request.on('close', () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+    response.end();
+  });
+});
+
 app.get('/api/rooms/:slug/admissions/:requestId', withIdentity(true, async (request, response, identity) => {
   const room = store.findRoomBySlug(request.params.slug);
   if (!room) {

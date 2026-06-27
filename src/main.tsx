@@ -72,9 +72,14 @@ import {
   sendRoomChatMessage,
   sendRoomInvitations,
   setRoomChatTyping,
+  subscribeRoomAdmissions,
   subscribeRoomChat,
   loadSession,
 } from './api';
+import {
+  getLatestPendingAdmissionRequest,
+  mergeAdmissionRequestEvent,
+} from './admissionRequests';
 import type {
   AdmissionWaitingResponse,
   ChatMessage,
@@ -1687,6 +1692,7 @@ function MeetingExperience({
             </p>
           </section>
         </div>
+        <MeetingAdmissionPopup roomSlug={roomSlug} />
       </div>
     </LayoutContextProvider>
   );
@@ -1866,6 +1872,95 @@ function MeetingAdmissionRequests({ roomSlug }: { roomSlug: string }) {
         ))}
       </ul>
       {status ? <p className="panel-status">{status}</p> : null}
+    </section>
+  );
+}
+
+function MeetingAdmissionPopup({ roomSlug }: { roomSlug: string }) {
+  const t = useT();
+  const [requests, setRequests] = React.useState<RoomAdmissionRequest[]>([]);
+  const [busyRequestId, setBusyRequestId] = React.useState<string>();
+  const [status, setStatus] = React.useState('');
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const sync = async () => {
+      try {
+        const response = await listRoomAdmissions(roomSlug);
+        if (!cancelled) {
+          setRequests(response.requests);
+        }
+      } catch {
+        if (!cancelled) {
+          setRequests([]);
+        }
+      }
+    };
+
+    void sync();
+    const unsubscribe = subscribeRoomAdmissions(roomSlug, (event) => {
+      setRequests((current) => mergeAdmissionRequestEvent(current, event));
+    }, () => {
+      void sync();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [roomSlug]);
+
+  const request = getLatestPendingAdmissionRequest(requests);
+
+  const decide = async (requestId: string, decision: 'approved' | 'rejected') => {
+    setBusyRequestId(requestId);
+    setStatus('');
+    try {
+      await resolveRoomAdmission(roomSlug, requestId, decision);
+      setRequests((current) => current.filter((pendingRequest) => pendingRequest.id !== requestId));
+      setStatus(decision === 'approved' ? t('admission.approved') : t('admission.denied'));
+    } catch (err) {
+      setStatus((err as Error).message);
+    } finally {
+      setBusyRequestId(undefined);
+    }
+  };
+
+  if (!request) {
+    return status ? (
+      <div className="admission-popup is-status" role="status">
+        {status}
+      </div>
+    ) : null;
+  }
+
+  return (
+    <section className="admission-popup" role="dialog" aria-live="assertive" aria-label={t('admission.pendingTitle')}>
+      <div className="admission-popup-icon">
+        <UserPlus size={18} />
+      </div>
+      <div className="admission-popup-copy">
+        <strong>{t('admission.pendingTitle')}</strong>
+        <p>{t('admission.popupBody', { name: request.displayName })}</p>
+      </div>
+      <div className="admission-popup-actions">
+        <button
+          type="button"
+          disabled={busyRequestId === request.id}
+          onClick={() => decide(request.id, 'approved')}
+        >
+          {t('admission.approveShort')}
+        </button>
+        <button
+          type="button"
+          className="danger-mini"
+          disabled={busyRequestId === request.id}
+          onClick={() => decide(request.id, 'rejected')}
+        >
+          {t('admission.rejectShort')}
+        </button>
+      </div>
     </section>
   );
 }

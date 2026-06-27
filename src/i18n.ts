@@ -11,6 +11,7 @@ export type TranslationKey =
   | 'admission.approveShort'
   | 'admission.denied'
   | 'admission.pendingTitle'
+  | 'admission.popupBody'
   | 'admission.reject'
   | 'admission.rejected'
   | 'admission.rejectShort'
@@ -198,6 +199,7 @@ const pt: TranslationMap = {
   'admission.approveShort': 'Aprovar',
   'admission.denied': 'Entrada recusada.',
   'admission.pendingTitle': 'Pedidos de entrada',
+  'admission.popupBody': '{name} quer entrar nesta reuniao.',
   'admission.reject': 'Recusar entrada',
   'admission.rejected': 'Sua entrada foi recusada.',
   'admission.rejectShort': 'Recusar',
@@ -385,6 +387,7 @@ const en: TranslationMap = {
   'admission.approveShort': 'Approve',
   'admission.denied': 'Entry rejected.',
   'admission.pendingTitle': 'Entry requests',
+  'admission.popupBody': '{name} wants to join this meeting.',
   'admission.reject': 'Reject entry',
   'admission.rejected': 'Your entry was rejected.',
   'admission.rejectShort': 'Reject',
@@ -557,6 +560,7 @@ const fr: TranslationMap = {
   'admission.approveShort': 'Approuver',
   'admission.denied': 'Entree refusee.',
   'admission.pendingTitle': 'Demandes d entree',
+  'admission.popupBody': '{name} veut rejoindre cette reunion.',
   'admission.reject': 'Refuser l entree',
   'admission.rejected': 'Votre entree a ete refusee.',
   'admission.rejectShort': 'Refuser',
