@@ -11,6 +11,18 @@ type IOSFullscreenVideo = HTMLVideoElement & {
   webkitEnterFullscreen?: () => void;
 };
 
+const FULLSCREEN_VIDEO_SELECTOR = '.mobile-immersive-main video, .fullscreen-stage-grid video, video';
+
+function enterVideoFullscreen(element: HTMLElement): boolean {
+  const video = element.querySelector(FULLSCREEN_VIDEO_SELECTOR) as IOSFullscreenVideo | null;
+  if (video?.webkitEnterFullscreen) {
+    video.webkitEnterFullscreen();
+    return true;
+  }
+
+  return false;
+}
+
 export async function toggleMeetingFullscreen(element: HTMLElement, doc: FullscreenDocument = document): Promise<boolean> {
   const activeFullscreenElement = doc.fullscreenElement || doc.webkitFullscreenElement;
   if (activeFullscreenElement) {
@@ -26,19 +38,21 @@ export async function toggleMeetingFullscreen(element: HTMLElement, doc: Fullscr
 
   const fullscreenElement = element as FullscreenElement;
   if (fullscreenElement.requestFullscreen) {
-    await fullscreenElement.requestFullscreen();
-    return true;
+    try {
+      await fullscreenElement.requestFullscreen();
+      return true;
+    } catch {
+      return enterVideoFullscreen(element);
+    }
   }
   if (fullscreenElement.webkitRequestFullscreen) {
-    await fullscreenElement.webkitRequestFullscreen();
-    return true;
+    try {
+      await fullscreenElement.webkitRequestFullscreen();
+      return true;
+    } catch {
+      return enterVideoFullscreen(element);
+    }
   }
 
-  const video = element.querySelector('video') as IOSFullscreenVideo | null;
-  if (video?.webkitEnterFullscreen) {
-    video.webkitEnterFullscreen();
-    return true;
-  }
-
-  return false;
+  return enterVideoFullscreen(element);
 }
