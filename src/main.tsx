@@ -117,7 +117,7 @@ import {
   getDefaultFloatingPreviewPosition,
   type FloatingPreviewPosition,
 } from './mobileFloatingPreview';
-import { mergeRoomChatMessages } from './chatMessages';
+import { getChatToastSummary, mergeRoomChatMessages, shouldShowChatToast } from './chatMessages';
 import { getTypingSummary, getVisibleTypingParticipants, type TypingParticipant } from './chatPresence';
 import { getDeviceDisplayLabel, groupMediaDevices } from './mediaDevices';
 import { createTranslator, resolveLocale, type AppLocale } from './i18n';
@@ -1354,7 +1354,9 @@ function MeetingExperience({
   const [fullscreenFocus, setFullscreenFocus] = React.useState<FullscreenStageFocus>('friends');
   const [spotlightKey, setSpotlightKey] = React.useState<StageSpotlightKey | null>(null);
   const [mobileChromeVisible, setMobileChromeVisible] = React.useState(true);
+  const [chatToast, setChatToast] = React.useState<ChatMessage | null>(null);
   const mobileChromeTimerRef = React.useRef<number>();
+  const chatToastTimerRef = React.useRef<number>();
 
   React.useEffect(() => {
     const updateFullscreenState = () => {
@@ -1440,6 +1442,15 @@ function MeetingExperience({
           setLastSeenChatMessageCount((lastSeen) => (meetingFocus === 'chat' ? nextCount : lastSeen));
           return nextCount;
         });
+        if (shouldShowChatToast(event.payload.message, localIdentityId, meetingFocus)) {
+          setChatToast(event.payload.message);
+          if (chatToastTimerRef.current) {
+            window.clearTimeout(chatToastTimerRef.current);
+          }
+          chatToastTimerRef.current = window.setTimeout(() => {
+            setChatToast(null);
+          }, 7000);
+        }
       }
     }, () => {
       // Chat badge is advisory; the visible chat surface reports load errors and reconnects via EventSource.
@@ -1447,9 +1458,18 @@ function MeetingExperience({
 
     return () => {
       cancelled = true;
+      if (chatToastTimerRef.current) {
+        window.clearTimeout(chatToastTimerRef.current);
+      }
       unsubscribe();
     };
-  }, [meetingFocus, roomSlug]);
+  }, [localIdentityId, meetingFocus, roomSlug]);
+
+  React.useEffect(() => {
+    if (meetingFocus === 'chat') {
+      setChatToast(null);
+    }
+  }, [meetingFocus]);
 
   const togglePanel = (panel: Exclude<MobileMeetingPanel, null>) => {
     showMobileChrome();
@@ -1464,9 +1484,18 @@ function MeetingExperience({
       const nextFocus = getMeetingFocusAfterChatClick(current);
       if (nextFocus === 'chat') {
         setLastSeenChatMessageCount(chatMessageCount);
+        setChatToast(null);
       }
       return nextFocus;
     });
+    setDesktopPanel(null);
+    setMobilePanel(null);
+  };
+  const openChatFromToast = () => {
+    showMobileChrome();
+    setMeetingFocus('chat');
+    setLastSeenChatMessageCount(chatMessageCount);
+    setChatToast(null);
     setDesktopPanel(null);
     setMobilePanel(null);
   };
@@ -1618,6 +1647,25 @@ function MeetingExperience({
                 </button>
               </div>
             </>
+          ) : null}
+          {chatToast ? (
+            <button
+              type="button"
+              className="chat-message-toast"
+              aria-label={t('chat.toastOpen')}
+              onClick={openChatFromToast}
+            >
+              <MessageSquare size={18} />
+              <span>
+                <strong>{chatToast.senderName}</strong>
+                <small>
+                  {getChatToastSummary(chatToast, {
+                    image: t('chat.toastImage'),
+                    file: t('chat.toastFile'),
+                  })}
+                </small>
+              </span>
+            </button>
           ) : null}
         </div>
 

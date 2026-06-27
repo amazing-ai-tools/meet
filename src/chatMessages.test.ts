@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { mergeRoomChatMessages } from './chatMessages.ts';
+import {
+  getChatToastSummary,
+  shouldShowChatToast,
+  mergeRoomChatMessages,
+} from './chatMessages.ts';
 import type { ChatMessage } from './types';
 
 const baseMessage: ChatMessage = {
@@ -38,4 +42,42 @@ test('mergeRoomChatMessages keeps messages ordered by creation time and capped',
   assert.equal(merged.length, 200);
   assert.equal(merged[0].id, 'chat_5');
   assert.equal(merged.at(-1)?.id, 'chat_204');
+});
+
+test('shouldShowChatToast only notifies for other users while chat is hidden', () => {
+  assert.equal(shouldShowChatToast(baseMessage, 'identity_2', 'video'), true);
+  assert.equal(shouldShowChatToast(baseMessage, 'identity_1', 'video'), false);
+  assert.equal(shouldShowChatToast(baseMessage, 'identity_2', 'chat'), false);
+});
+
+test('getChatToastSummary prefers text and falls back to attachment labels', () => {
+  assert.equal(
+    getChatToastSummary(
+      { ...baseMessage, text: '  Esta mensagem tem bastante conteudo para aparecer resumida no toast.  ' },
+      { image: 'Imagem', file: 'Arquivo' },
+      32,
+    ),
+    'Esta mensagem tem bastante co...',
+  );
+
+  assert.equal(
+    getChatToastSummary(
+      {
+        ...baseMessage,
+        text: '',
+        attachment: {
+          id: 'att_1',
+          name: 'screen.png',
+          type: 'image/png',
+          size: 1200,
+          kind: 'image',
+          dataUrl: 'data:image/png;base64,AA==',
+        },
+      },
+      { image: 'Imagem', file: 'Arquivo' },
+    ),
+    'Imagem: screen.png',
+  );
+
+  assert.equal(getChatToastSummary({ ...baseMessage, text: '' }, { image: 'Imagem', file: 'Arquivo' }), '');
 });

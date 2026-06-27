@@ -37,6 +37,9 @@ export type TranslationKey =
   | 'chat.reconnecting'
   | 'chat.removeAttachment'
   | 'chat.send'
+  | 'chat.toastFile'
+  | 'chat.toastImage'
+  | 'chat.toastOpen'
   | 'controls.camera'
   | 'controls.chat'
   | 'controls.chatVideoToggle'
@@ -225,6 +228,9 @@ const pt: TranslationMap = {
   'chat.reconnecting': 'Reconectando ao chat em tempo real...',
   'chat.removeAttachment': 'Remover anexo',
   'chat.send': 'Enviar mensagem',
+  'chat.toastFile': 'Arquivo',
+  'chat.toastImage': 'Imagem',
+  'chat.toastOpen': 'Abrir chat',
   'controls.camera': 'Camera',
   'controls.chat': 'Chat',
   'controls.chatVideoToggle': 'Chat / video',
@@ -410,6 +416,9 @@ const en: TranslationMap = {
   'chat.inputProminent': 'Write a message to the meeting...',
   'chat.reconnecting': 'Reconnecting to realtime chat...',
   'chat.send': 'Send message',
+  'chat.toastFile': 'File',
+  'chat.toastImage': 'Image',
+  'chat.toastOpen': 'Open chat',
   'controls.chatUnread': 'Chat ({count} new)',
   'controls.chatVideoToggle': 'Chat / video',
   'controls.devices': 'Devices',
@@ -585,6 +594,9 @@ const fr: TranslationMap = {
   'chat.reconnecting': 'Reconnexion au chat en temps reel...',
   'chat.removeAttachment': 'Retirer la piece jointe',
   'chat.send': 'Envoyer le message',
+  'chat.toastFile': 'Fichier',
+  'chat.toastImage': 'Image',
+  'chat.toastOpen': 'Ouvrir le chat',
   'controls.camera': 'Camera',
   'controls.chatVideoToggle': 'Chat / video',
   'controls.chatUnread': 'Chat ({count} nouveaux)',

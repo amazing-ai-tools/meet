@@ -1442,6 +1442,68 @@ textarea:focus {
     #050914;
 }
 
+.chat-message-toast,
+.meeting-livekit-layout button.chat-message-toast {
+  position: absolute;
+  right: 24px;
+  bottom: 104px;
+  z-index: 62;
+  width: min(360px, calc(100% - 48px));
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.34);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 64, 175, 0.82)),
+    #0f172a;
+  color: #f8fafc;
+  text-align: left;
+  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.36);
+  backdrop-filter: blur(18px);
+}
+
+.chat-message-toast:hover,
+.meeting-livekit-layout button.chat-message-toast:hover,
+.chat-message-toast:focus-visible,
+.meeting-livekit-layout button.chat-message-toast:focus-visible {
+  border-color: rgba(147, 197, 253, 0.72);
+  transform: translateY(-1px);
+}
+
+.chat-message-toast > svg {
+  width: 18px;
+  height: 18px;
+  color: #bfdbfe;
+}
+
+.chat-message-toast span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.chat-message-toast strong,
+.chat-message-toast small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-message-toast strong {
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
+.chat-message-toast small {
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
 .meeting-control-button,
 .meeting-livekit-layout button.meeting-control-button {
   position: relative;
@@ -2821,6 +2883,26 @@ textarea:focus {
       opacity 180ms ease,
       transform 180ms ease,
       visibility 180ms ease;
+  }
+
+  .chat-message-toast,
+  .meeting-livekit-layout button.chat-message-toast {
+    left: 12px;
+    right: 12px;
+    bottom: calc(max(88px, env(safe-area-inset-bottom) + 88px));
+    width: auto;
+    padding: 11px 12px;
+    border-radius: 14px;
+  }
+
+  .meeting-livekit-layout.is-mobile-chrome-hidden .chat-message-toast,
+  .meeting-livekit-layout.is-mobile-chrome-hidden button.chat-message-toast {
+    bottom: max(18px, env(safe-area-inset-bottom) + 18px);
+  }
+
+  .meeting-livekit-layout.is-mobile-panel-open .chat-message-toast,
+  .meeting-livekit-layout.is-mobile-panel-open button.chat-message-toast {
+    display: none;
   }
 
   .meeting-livekit-layout.is-mobile-chrome-hidden .meeting-call-controls {
