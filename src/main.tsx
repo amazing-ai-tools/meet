@@ -19,6 +19,7 @@ import {
   Sparkles,
   Settings,
   SwitchCamera,
+  Trash2,
   UserPlus,
   Users,
   Video,
@@ -51,6 +52,7 @@ import {
   createGoogleSession,
   createGuestSession,
   createInstantRoom,
+  deleteTeam,
   resolveWidgetRoom,
   createTeam,
   createTeamRoom,
@@ -421,6 +423,7 @@ function Dashboard({
   }, [selectedTeamId]);
 
   const selectedTeam = teams.find((team) => team.id === selectedTeamId);
+  const selectedTeamIsOwner = Boolean(selectedTeam && session?.identity.id === selectedTeam.ownerIdentityId);
   const persistentRooms = teams.flatMap((team) => (roomsByTeam[team.id] || []).map((room) => ({
     room,
     team,
@@ -474,6 +477,39 @@ function Dashboard({
       setTeams((current) => current.map((saved) => (saved.id === team.id ? team : saved)));
       setMemberEmails('');
       setTeamInviteStatus(t('team.membersSaved'));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeSelectedTeam = async () => {
+    if (!selectedTeam) {
+      return;
+    }
+
+    if (!window.confirm(t('team.deleteConfirm', { team: selectedTeam.name }))) {
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setTeamInviteStatus('');
+    try {
+      await deleteTeam(selectedTeam.id);
+      setTeams((current) => {
+        const nextTeams = current.filter((team) => team.id !== selectedTeam.id);
+        setSelectedTeamId(nextTeams[0]?.id || '');
+        return nextTeams;
+      });
+      setRoomsByTeam((current) => {
+        const nextRoomsByTeam = { ...current };
+        delete nextRoomsByTeam[selectedTeam.id];
+        return nextRoomsByTeam;
+      });
+      setRooms([]);
+      setTeamInviteStatus(t('team.deleted'));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -642,6 +678,18 @@ function Dashboard({
                     <p className="team-empty-note">{t('team.noMembers')}</p>
                   )}
                 </div>
+                {selectedTeamIsOwner && (
+                  <div className="team-danger-card">
+                    <div>
+                      <strong>{t('team.deleteTitle')}</strong>
+                      <p>{t('team.deleteDescription')}</p>
+                    </div>
+                    <button type="button" className="danger-button" onClick={removeSelectedTeam} disabled={busy}>
+                      <Trash2 size={16} />
+                      {t('team.deleteTeam')}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

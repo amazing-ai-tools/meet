@@ -225,6 +225,36 @@ export class JsonStore {
     return structuredClone(team);
   }
 
+  async deleteTeam(teamId: string): Promise<Team> {
+    const team = this.state.teams.find((saved) => saved.id === teamId);
+    if (!team) {
+      throw new Error('Team not found');
+    }
+
+    const removedRoomIds = new Set(
+      this.state.rooms
+        .filter((room) => room.teamId === teamId)
+        .map((room) => room.id),
+    );
+
+    this.state.teams = this.state.teams.filter((saved) => saved.id !== teamId);
+    this.state.rooms = this.state.rooms.filter((room) => room.teamId !== teamId);
+    this.state.participants = this.state.participants.filter((participant) => !removedRoomIds.has(participant.roomId));
+    this.state.participantSessions = this.state.participantSessions.filter((session) => !removedRoomIds.has(session.roomId));
+    this.state.chatMessages = this.state.chatMessages.filter((message) => !removedRoomIds.has(message.roomId));
+    this.state.roomInvitations = this.state.roomInvitations.filter((invitation) => !removedRoomIds.has(invitation.roomId));
+    this.state.roomAdmissionRequests = this.state.roomAdmissionRequests.filter((request) => !removedRoomIds.has(request.roomId));
+
+    for (const roomId of removedRoomIds) {
+      delete this.state.chatBlockedIdentityIds[roomId];
+      this.roomChatListeners.delete(roomId);
+      this.roomAdmissionListeners.delete(roomId);
+    }
+
+    await this.save();
+    return structuredClone(team);
+  }
+
   async addParticipant(participant: MeetingParticipant): Promise<MeetingParticipant> {
     const existingIndex = this.state.participants.findIndex(
       (saved) => saved.roomId === participant.roomId && saved.identityId === participant.identityId,

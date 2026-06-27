@@ -158,6 +158,11 @@ export type TranslationKey =
   | 'status.linkCopied'
   | 'status.you'
   | 'team.addMembers'
+  | 'team.deleteConfirm'
+  | 'team.deleteDescription'
+  | 'team.deleteTeam'
+  | 'team.deleteTitle'
+  | 'team.deleted'
   | 'team.inviteAllMembers'
   | 'team.inviteNote'
   | 'team.invitesPending'
@@ -340,6 +345,11 @@ const pt: TranslationMap = {
   'status.linkCopied': 'Link copiado',
   'status.you': 'Voce',
   'team.addMembers': 'Adicionar membros',
+  'team.deleteConfirm': 'Excluir o time "{team}"? As salas persistentes deste time tambem serao removidas.',
+  'team.deleteDescription': 'Exclui o time e as salas persistentes vinculadas a ele. Esta acao nao pode ser desfeita.',
+  'team.deleteTeam': 'Excluir time',
+  'team.deleteTitle': 'Excluir este time',
+  'team.deleted': 'Time excluido.',
   'team.inviteAllMembers': 'Enviar convite para todos os membros ao criar a sala',
   'team.inviteNote': 'Voce foi convidado para uma sala do time no amazing-ai meet.',
   'team.invitesPending': 'Convites do time registrados. Configure SMTP para envio automatico.',
@@ -501,6 +511,11 @@ const en: TranslationMap = {
   'status.linkCopied': 'Link copied',
   'status.you': 'You',
   'team.addMembers': 'Add members',
+  'team.deleteConfirm': 'Delete the team "{team}"? Persistent rooms for this team will also be removed.',
+  'team.deleteDescription': 'Deletes the team and its persistent rooms. This action cannot be undone.',
+  'team.deleteTeam': 'Delete team',
+  'team.deleteTitle': 'Delete this team',
+  'team.deleted': 'Team deleted.',
   'team.inviteAllMembers': 'Invite all members when creating the room',
   'team.inviteNote': 'You were invited to a team room on amazing-ai meet.',
   'team.invitesPending': 'Team invitations recorded. Configure SMTP for automatic delivery.',
@@ -674,6 +689,11 @@ const fr: TranslationMap = {
   'status.linkCopied': 'Lien copie',
   'status.you': 'Vous',
   'team.addMembers': 'Ajouter des membres',
+  'team.deleteConfirm': 'Supprimer l equipe "{team}" ? Les salles persistantes de cette equipe seront aussi supprimees.',
+  'team.deleteDescription': 'Supprime l equipe et ses salles persistantes. Cette action ne peut pas etre annulee.',
+  'team.deleteTeam': 'Supprimer l equipe',
+  'team.deleteTitle': 'Supprimer cette equipe',
+  'team.deleted': 'Equipe supprimee.',
   'team.inviteAllMembers': 'Inviter tous les membres lors de la creation de la salle',
   'team.inviteNote': 'Vous avez ete invite dans une salle d’equipe sur amazing-ai meet.',
   'team.invitesPending': 'Invitations de l’equipe enregistrees. Configurez SMTP pour l’envoi automatique.',

@@ -734,6 +734,34 @@ textarea:focus {
   gap: 10px;
 }
 
+.team-danger-card {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  border: 1px solid #ffd3d3;
+  border-radius: 8px;
+  background: #fff7f7;
+}
+
+.team-danger-card strong {
+  color: #8d1e1e;
+}
+
+.team-danger-card p {
+  margin: 4px 0 0;
+  color: #6f2a2a;
+}
+
+.danger-button {
+  justify-self: start;
+  background: #b42318;
+  color: #fff;
+}
+
+.danger-button:hover {
+  background: #8f1d14;
+}
+
 .team-members-card,
 .team-room-options {
   padding: 14px;

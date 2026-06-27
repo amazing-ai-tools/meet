@@ -469,6 +469,22 @@ app.post('/api/teams/:teamId/members', withIdentity(true, async (request, respon
   response.json({ team: updatedTeam });
 }));
 
+app.delete('/api/teams/:teamId', withIdentity(true, async (request, response, identity) => {
+  const team = store.findTeam(request.params.teamId);
+  if (!team || !isTeamMember(team, identity!)) {
+    response.status(404).json({ error: 'Team not found' });
+    return;
+  }
+
+  if (team.ownerIdentityId !== identity!.id) {
+    response.status(403).json({ error: 'Only the team owner can delete this team' });
+    return;
+  }
+
+  const deletedTeam = await store.deleteTeam(team.id);
+  response.json({ team: deletedTeam });
+}));
+
 app.post('/api/teams/:teamId/rooms', withIdentity(true, async (request, response, identity) => {
   const team = store.findTeam(request.params.teamId);
   if (!team || !isTeamMember(team, identity!)) {

@@ -235,6 +235,12 @@ export async function addTeamMembers(teamId: string, emails: string): Promise<{ 
   });
 }
 
+export async function deleteTeam(teamId: string): Promise<{ team: Team }> {
+  return api<{ team: Team }>(`/teams/${teamId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function createTeamRoom(
   teamId: string,
   title: string,

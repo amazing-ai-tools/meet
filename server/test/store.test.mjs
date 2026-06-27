@@ -13,6 +13,7 @@ import {
   createRoomAdmissionRequest,
   createRoomInvitation,
   createTeam,
+  createTeamRoom,
 } from '../dist/domain.js';
 import { JsonStore } from '../dist/store.js';
 
@@ -245,6 +246,34 @@ test('store lists teams for Google identities added by email', async () => {
   await store.addTeamMemberEmails(team.id, ['member@example.com']);
 
   assert.equal(store.listTeamsForIdentity(member).length, 1);
+
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('store deletes a team and its persistent rooms', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'meetteams-store-'));
+  const store = new JsonStore(join(dir, 'state.json'));
+  const owner = {
+    id: 'google_owner',
+    displayName: 'Owner User',
+    email: 'owner@example.com',
+    provider: 'google',
+  };
+  const team = createTeam(owner, 'Product Team');
+  const teamRoom = createTeamRoom(team, owner, 'Roadmap');
+  const instantRoom = createInstantRoom(owner, 'Instant Sync');
+
+  await store.load();
+  await store.addTeam(team);
+  await store.addRoom(teamRoom);
+  await store.addRoom(instantRoom);
+
+  const deleted = await store.deleteTeam(team.id);
+
+  assert.equal(deleted.id, team.id);
+  assert.equal(store.findTeam(team.id), undefined);
+  assert.deepEqual(store.listRoomsForTeam(team.id), []);
+  assert.equal(store.findRoomById(instantRoom.id).id, instantRoom.id);
 
   await rm(dir, { recursive: true, force: true });
 });
